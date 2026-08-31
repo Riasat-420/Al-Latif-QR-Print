@@ -1,15 +1,8 @@
 -- QR Print MVP — Database Schema
--- Run this against your MySQL database to set up the tables.
-
-CREATE DATABASE IF NOT EXISTS qr_print
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
-USE qr_print;
+-- Run this in Hostinger phpMyAdmin (inside your database `u514821150_print`).
 
 -- ============================================================
 -- shops: one row per physical print shop / location
--- For MVP this will have exactly one row (your own shop).
 -- ============================================================
 CREATE TABLE IF NOT EXISTS shops (
   id                      INT AUTO_INCREMENT PRIMARY KEY,
@@ -18,7 +11,7 @@ CREATE TABLE IF NOT EXISTS shops (
   agent_key               VARCHAR(64)  NOT NULL UNIQUE COMMENT 'Secret the Print Agent authenticates with',
   dashboard_password_hash VARCHAR(255) NOT NULL        COMMENT 'bcrypt hash of the dashboard login password',
   created_at              DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
 -- jobs: one row per print job submitted by a customer
@@ -49,4 +42,4 @@ CREATE TABLE IF NOT EXISTS jobs (
   INDEX idx_jobs_shop_status (shop_id, status),
   INDEX idx_jobs_expires     (expires_at),
   INDEX idx_jobs_created     (created_at)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
