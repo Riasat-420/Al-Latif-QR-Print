@@ -1,0 +1,18 @@
+{
+  "name": "al-latif-qr-print",
+  "version": "1.0.0",
+  "description": "Al-Latif QR Print MVP — QR to Mobile Studio to Windows Print Agent",
+  "scripts": {
+    "start": "node backend/src/server.js",
+    "dev": "node --watch backend/src/server.js",
+    "seed": "node backend/src/seed.js"
+  },
+  "keywords": [
+    "qr-print",
+    "silent-print",
+    "electron",
+    "express"
+  ],
+  "author": "",
+  "license": "ISC"
+}

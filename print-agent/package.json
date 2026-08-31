@@ -1,0 +1,39 @@
+{
+  "name": "qr-print-agent",
+  "version": "1.0.0",
+  "description": "Windows system-tray Print Agent — polls the QR Print backend for jobs, shows Accept/Reject notifications, and prints silently.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "dev": "electron . --dev"
+  },
+  "build": {
+    "appId": "com.qrprint.agent",
+    "productName": "QR Print Agent",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true
+    },
+    "files": [
+      "**/*",
+      "!node_modules/.cache"
+    ]
+  },
+  "dependencies": {
+    "auto-launch": "^5.0.6",
+    "electron-store": "^8.2.0",
+    "node-fetch": "^2.7.0",
+    "pdf-lib": "^1.17.1",
+    "pdf-to-printer": "^5.6.1"
+  },
+  "devDependencies": {
+    "electron": "^31.2.0",
+    "electron-builder": "^24.13.3"
+  }
+}

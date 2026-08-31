@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Card Print Agent - Test</title>
+<style>
+  body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#f4f6f9; margin:0; padding:24px; color:#1c2430;}
+  .wrap{max-width:480px; margin:0 auto; background:#fff; border:1px solid #e3e7ec; border-radius:12px; padding:22px;}
+  h1{font-size:18px; margin:0 0 4px;}
+  p.sub{font-size:12.5px; color:#5b6673; margin:0 0 18px;}
+  label{display:block; font-size:12.5px; font-weight:600; color:#374151; margin:12px 0 4px;}
+  input, select{width:100%; padding:9px; border:1px solid #cbd2d9; border-radius:7px; font-size:14px;}
+  .row{display:flex; gap:10px;}
+  .row > div{flex:1;}
+  button{width:100%; margin-top:18px; padding:12px; font-size:14px; font-weight:700; background:#2f6feb; color:#fff; border:none; border-radius:8px; cursor:pointer;}
+  button:disabled{background:#9db4e8; cursor:default;}
+  #status{margin-top:14px; font-size:13px; padding:10px 12px; border-radius:8px; display:none;}
+  #status.ok{display:block; background:#eefaf0; color:#146c2e; border:1px solid #bfe8c8;}
+  #status.err{display:block; background:#fef2f2; color:#b91c1c; border:1px solid #fca5a5;}
+  #status.pending{display:block; background:#eef4ff; color:#2f6feb; border:1px solid #a9c2f5;}
+  #preview{margin-top:14px; max-width:100%; border:1px solid #e3e7ec; border-radius:8px; display:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🖨️ Card Print Agent - Test</h1>
+  <p class="sub">Confirms your phone can reach the PC agent and print. Once this works, the full Card Print Studio tool can be pointed at the same agent.</p>
+
+  <div id="connStatus" style="font-size:12.5px; color:#5b6673;">Checking connection…</div>
+
+  <label>Image to print</label>
+  <input type="file" id="fileInput" accept="image/*">
+  <img id="preview">
+
+  <div class="row">
+    <div>
+      <label>Width (mm)</label>
+      <input type="number" id="widthMM" value="139.7" step="0.1">
+    </div>
+    <div>
+      <label>Height (mm)</label>
+      <input type="number" id="heightMM" value="88.9" step="0.1">
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Copies</label>
+      <input type="number" id="copies" value="1" min="1">
+    </div>
+    <div>
+      <label>Printer</label>
+      <select id="printerSelect"><option value="">(default)</option></select>
+    </div>
+  </div>
+
+  <button id="printBtn" disabled>Send to printer</button>
+  <div id="status"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let imageDataUrl = null;
+
+async function checkHealthAndPrinters(){
+  try{
+    const h = await fetch('/health').then(r=>r.json());
+    $('connStatus').textContent = '✅ Connected to agent (' + h.time + ')';
+    const p = await fetch('/printers').then(r=>r.json());
+    const sel = $('printerSelect');
+    (p.printers||[]).forEach(pr=>{
+      const opt = document.createElement('option');
+      opt.value = pr.name; opt.textContent = pr.name + (pr.name===p.default ? ' (default)' : '');
+      sel.appendChild(opt);
+    });
+  } catch(e){
+    $('connStatus').textContent = '❌ Cannot reach agent - make sure the PC agent is running and you\'re on the same WiFi.';
+  }
+}
+checkHealthAndPrinters();
+
+$('fileInput').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    imageDataUrl = ev.target.result;
+    $('preview').src = imageDataUrl;
+    $('preview').style.display = 'block';
+    $('printBtn').disabled = false;
+  };
+  reader.readAsDataURL(f);
+});
+
+$('printBtn').addEventListener('click', async ()=>{
+  if(!imageDataUrl) return;
+  $('printBtn').disabled = true;
+  const status = $('status');
+  status.className = 'pending';
+  status.textContent = 'Sending to printer…';
+
+  try{
+    const res = await fetch('/print', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        imageDataUrl,
+        widthMM: parseFloat($('widthMM').value),
+        heightMM: parseFloat($('heightMM').value),
+        copies: parseInt($('copies').value)||1,
+        printer: $('printerSelect').value || undefined
+      })
+    });
+    const data = await res.json();
+    if(res.ok){
+      status.className = 'ok';
+      status.textContent = '✅ ' + data.message;
+    } else {
+      status.className = 'err';
+      status.textContent = '❌ ' + (data.error || 'Print failed');
+    }
+  } catch(e){
+    status.className = 'err';
+    status.textContent = '❌ Could not reach the agent: ' + e.message;
+  }
+  $('printBtn').disabled = false;
+});
+</script>
+</body>
+</html>
