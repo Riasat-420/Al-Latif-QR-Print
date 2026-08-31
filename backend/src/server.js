@@ -108,20 +108,73 @@ app.get('/', (req, res) => {
     <html lang="en">
     <head>
       <meta charset="UTF-8">
-      <title>Al-Latif QR Print Service</title>
+      <title>Al-Latif Digital & Telecom Center — QR Print</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0e1a; color: #f1f5f9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-        .card { background: rgba(17, 24, 39, 0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 36px; max-width: 420px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
-        h1 { font-size: 22px; margin-bottom: 8px; color: #818cf8; }
-        p { color: #94a3b8; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
-        .btn { display: block; padding: 12px 20px; margin: 10px 0; background: linear-gradient(135deg, #6366f1, #7c3aed); color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; transition: transform 0.2s; }
-        .btn-sec { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+          font-family: 'Inter', system-ui, sans-serif;
+          background: #0f0f0f;
+          color: #fdfdfd;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          padding: 20px;
+          background-image:
+            radial-gradient(circle at 10% 20%, rgba(255, 77, 0, 0.08) 0%, transparent 40%),
+            radial-gradient(circle at 90% 80%, rgba(255, 204, 0, 0.05) 0%, transparent 40%);
+        }
+        .card {
+          background: rgba(24, 24, 24, 0.88);
+          border: 1px solid rgba(255, 255, 255, 0.09);
+          border-radius: 1.25rem;
+          padding: 40px 32px;
+          max-width: 440px;
+          text-align: center;
+          box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(16px);
+        }
+        .logo { font-size: 46px; margin-bottom: 12px; filter: drop-shadow(0 0 16px rgba(255, 77, 0, 0.28)); }
+        h1 {
+          font-family: 'Playfair Display', Georgia, serif;
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin-bottom: 8px;
+          background: linear-gradient(135deg, #ffffff 40%, #ffa985);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        p { color: #a3a3a3; font-size: 0.875rem; margin-bottom: 28px; line-height: 1.5; }
+        .btn {
+          display: block;
+          padding: 13px 20px;
+          margin: 10px 0;
+          background: linear-gradient(135deg, #ff4d00, #d63200);
+          color: #ffffff;
+          text-decoration: none;
+          border-radius: 0.75rem;
+          font-weight: 600;
+          font-size: 0.9rem;
+          box-shadow: 0 4px 15px rgba(255, 77, 0, 0.28);
+          transition: transform 0.15s;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-sec {
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: #fdfdfd;
+          box-shadow: none;
+        }
       </style>
     </head>
     <body>
       <div class="card">
-        <h1>🖨️ Al-Latif QR Print</h1>
-        <p>Welcome to the print management server. Choose a destination:</p>
+        <div class="logo">🖨️</div>
+        <h1>Al-Latif QR Print</h1>
+        <p>Al-Latif Digital & Telecom Center — Instant mobile document scanning & high-precision print processing.</p>
         <a class="btn" href="/dashboard/">Open Operator Dashboard</a>
         <a class="btn btn-sec" href="/health">System Health Check</a>
       </div>
