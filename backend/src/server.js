@@ -9,12 +9,16 @@
  * Start:  npm start  (or: npm run dev  for auto-reload)
  */
 
-require('dotenv').config();
+const path = require('path');
+const dotenv = require('dotenv');
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config();
 
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
-const path = require('path');
 const fs = require('fs');
 
 const customerRoutes = require('./routes/customer');
@@ -28,7 +32,11 @@ const PORT = process.env.PORT || 3000;
 // ── Ensure upload directory exists ──────────────────────────
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  try {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  } catch (e) {
+    console.warn('Could not create uploads directory:', e.message);
+  }
 }
 
 // ── Middleware ───────────────────────────────────────────────
@@ -53,25 +61,73 @@ app.use(session({
 }));
 
 // ── Serve uploaded files (images + thumbnails) ──────────────
-// The Agent downloads job images from here, dashboard shows thumbnails.
 app.use('/uploads', express.static(UPLOAD_DIR));
 
+// ── Resolve static directories flexibly ─────────────────────
+function findStaticDir(dirName) {
+  const candidates = [
+    path.resolve(__dirname, '../../', dirName),
+    path.resolve(__dirname, '../', dirName),
+    path.resolve(process.cwd(), dirName),
+    path.resolve(process.cwd(), 'backend', dirName),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
 // ── Serve the Web Studio (customer-facing SPA) ──────────────
-const webStudioDir = path.resolve(__dirname, '../../web-studio');
-if (fs.existsSync(webStudioDir)) {
+const webStudioDir = findStaticDir('web-studio');
+if (webStudioDir) {
+  console.log(`[Static] Serving Web Studio from: ${webStudioDir}`);
   app.use('/studio', express.static(webStudioDir));
+} else {
+  console.warn('[Static] Web Studio directory not found.');
 }
 
 // ── Serve the Dashboard (operator-facing SPA) ───────────────
-const dashboardDir = path.resolve(__dirname, '../../dashboard');
-if (fs.existsSync(dashboardDir)) {
+const dashboardDir = findStaticDir('dashboard');
+if (dashboardDir) {
+  console.log(`[Static] Serving Dashboard from: ${dashboardDir}`);
   app.use('/dashboard', express.static(dashboardDir));
+} else {
+  console.warn('[Static] Dashboard directory not found.');
 }
 
 // ── API Routes ──────────────────────────────────────────────
 app.use('/api', customerRoutes);
 app.use('/api/agent', agentRoutes);
 app.use('/api/admin', adminRoutes);
+
+// ── Root route: redirect to dashboard or studio ─────────────
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>Al-Latif QR Print Service</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0e1a; color: #f1f5f9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .card { background: rgba(17, 24, 39, 0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 36px; max-width: 420px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+        h1 { font-size: 22px; margin-bottom: 8px; color: #818cf8; }
+        p { color: #94a3b8; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+        .btn { display: block; padding: 12px 20px; margin: 10px 0; background: linear-gradient(135deg, #6366f1, #7c3aed); color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; transition: transform 0.2s; }
+        .btn-sec { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <h1>🖨️ Al-Latif QR Print</h1>
+        <p>Welcome to the print management server. Choose a destination:</p>
+        <a class="btn" href="/dashboard/">Open Operator Dashboard</a>
+        <a class="btn btn-sec" href="/health">System Health Check</a>
+      </div>
+    </body>
+    </html>
+  `);
+});
 
 // ── QR shortcut: /s/:token redirects to the Web Studio ──────
 app.get('/s/:token', (req, res) => {
@@ -80,7 +136,7 @@ app.get('/s/:token', (req, res) => {
 
 // ── Health check ────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ ok: true, time: new Date().toISOString(), version: '1.0.0' });
+  res.json({ ok: true, time: new Date().toISOString(), version: '1.0.0', service: 'Al-Latif QR Print' });
 });
 
 // ── Error handler ───────────────────────────────────────────
@@ -106,5 +162,9 @@ app.listen(PORT, () => {
   console.log(`   API base:   http://localhost:${PORT}/api/\n`);
 
   // Start the file-cleanup cron
-  startCleanupCron();
+  try {
+    startCleanupCron();
+  } catch (e) {
+    console.warn('[cleanup] Could not start cron:', e.message);
+  }
 });

@@ -1,10 +1,10 @@
-/**
- * MySQL connection pool (mysql2 with promise API).
- *
- * Usage:
- *   const db = require('./db');
- *   const [rows] = await db.query('SELECT * FROM shops WHERE token = ?', [token]);
- */
+const path = require('path');
+const dotenv = require('dotenv');
+
+// Load .env explicitly from backend/.env or root .env
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config();
 
 const mysql = require('mysql2/promise');
 
@@ -17,7 +17,6 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  // Return dates as strings rather than JS Date objects to avoid timezone surprises
   dateStrings: true,
 });
 
