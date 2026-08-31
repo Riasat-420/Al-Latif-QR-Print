@@ -1,0 +1,10 @@
+RewriteEngine On
+
+# Allow direct access only to static files (like .css, .js, .png, .jpg, .svg, .ico)
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|pdf)$ - [L]
+
+# Route all other URLs (including /dashboard/, /studio/, /s/, /api/) to PHP proxy
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+DirectoryIndex index.php
