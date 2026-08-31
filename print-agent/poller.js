@@ -2,19 +2,19 @@
  * poller.js — HTTP poll loop for pending print jobs.
  *
  * Polls GET /api/agent/poll every N seconds.
- * On a new job, triggers the notification flow (Accept/Reject).
+ * On a new job, triggers Accept/Reject prompt & Windows notification.
  * Handles network errors with exponential backoff.
  */
 
 const fetch = require('node-fetch');
-const { Notification } = require('electron');
+const { Notification, dialog, BrowserWindow } = require('electron');
 const { setTrayState } = require('./tray');
 const { handleAccept, handleReject } = require('./printer');
 
 let pollTimer = null;
 let isPolling = false;
 let consecutiveErrors = 0;
-const MAX_BACKOFF_MS = 60000;
+let activeJobId = null;
 
 function startPolling(store) {
   if (isPolling) return;
@@ -23,7 +23,7 @@ function startPolling(store) {
   setTrayState('idle');
 
   const interval = store.get('pollInterval') || 5000;
-  console.log(`[Poller] Starting poll every ${interval}ms`);
+  console.log(`[Poller] Active — polling every ${interval / 1000}s`);
 
   // Immediate first poll
   doPoll(store);
@@ -40,103 +40,106 @@ function stopPolling() {
 }
 
 async function doPoll(store) {
-  const serverUrl = store.get('serverUrl');
+  const serverUrl = (store.get('serverUrl') || '').replace(/\/$/, '');
   const agentKey = store.get('agentKey');
 
   if (!serverUrl || !agentKey) return;
+  if (activeJobId !== null) return; // Don't poll if currently processing a prompt
 
   try {
     const url = `${serverUrl}/api/agent/poll?agent_key=${encodeURIComponent(agentKey)}`;
     const res = await fetch(url, { timeout: 10000 });
 
     if (res.status === 204) {
-      // No pending jobs
       consecutiveErrors = 0;
       setTrayState('idle');
       return;
     }
 
     if (!res.ok) {
-      throw new Error(`Server responded ${res.status}`);
+      throw new Error(`Server responded HTTP ${res.status}`);
     }
 
     const job = await res.json();
     consecutiveErrors = 0;
 
-    console.log(`[Poller] New job #${job.id}: ${job.widthMM}×${job.heightMM}mm, ${job.copies} copies`);
-    setTrayState('waiting');
+    if (activeJobId === job.id) return;
+    activeJobId = job.id;
 
-    // Show notification
-    showJobNotification(job, store);
+    console.log(`\n🔔 [NEW PRINT JOB #${job.id}]`);
+    console.log(`   Dimensions:  ${job.widthMM} × ${job.heightMM} mm`);
+    console.log(`   Copies:      ${job.copies}`);
+    console.log(`   Color Mode:  ${job.colorMode === 'bw' ? 'B&W' : 'Color'}`);
+    console.log(`   Paper Size:  ${job.paperSize}`);
+
+    setTrayState('waiting');
+    showJobPrompt(job, store);
 
   } catch (err) {
     consecutiveErrors++;
-    console.warn(`[Poller] Poll error (attempt ${consecutiveErrors}):`, err.message);
-
+    if (consecutiveErrors === 1 || consecutiveErrors % 5 === 0) {
+      console.warn(`[Poller] Poll error (${consecutiveErrors}):`, err.message);
+    }
     if (consecutiveErrors >= 3) {
       setTrayState('error');
     }
   }
 }
 
-function showJobNotification(job, store) {
-  // Stop polling while waiting for operator action (avoid re-notifying the same job)
-  stopPolling();
+async function showJobPrompt(job, store) {
+  // Show system notification
+  if (Notification.isSupported()) {
+    const notification = new Notification({
+      title: '🖨️ New Print Job Received!',
+      body: `Job #${job.id}: ${job.widthMM}×${job.heightMM}mm • ${job.copies} copies • ${job.colorMode === 'bw' ? 'B&W' : 'Color'}`,
+      urgency: 'critical',
+    });
+    notification.on('click', () => {
+      // Focus or bring dialog forward
+    });
+    notification.show();
+  }
 
-  const notification = new Notification({
-    title: '🖨️ New Print Job',
-    body: `${job.widthMM}×${job.heightMM}mm • ${job.copies} ${job.copies > 1 ? 'copies' : 'copy'} • ${job.colorMode === 'bw' ? 'B&W' : 'Color'} • ${job.paperSize}`,
-    icon: job.thumbnailUrl || undefined,
-    actions: [
-      { type: 'button', text: '✅ Accept' },
-      { type: 'button', text: '❌ Reject' },
-    ],
-    urgency: 'critical',
-    timeoutType: 'never',
+  // Show immediate on-screen dialog on shop PC
+  const choice = await dialog.showMessageBox({
+    type: 'question',
+    buttons: ['✅ Accept & Print', '❌ Reject'],
+    defaultId: 0,
+    cancelId: 1,
+    title: `New Print Job #${job.id}`,
+    message: `A new print job has been submitted:`,
+    detail: `• Size: ${job.widthMM} × ${job.heightMM} mm\n• Copies: ${job.copies}\n• Color: ${job.colorMode === 'bw' ? 'Black & White' : 'Color'}\n• Paper: ${job.paperSize}\n\nClick "Accept & Print" to print immediately.`,
+    noLink: true,
   });
 
-  notification.on('action', (_, index) => {
-    if (index === 0) {
-      // Accept
-      acceptAndPrint(job, store);
-    } else {
-      // Reject
-      rejectJob(job, store);
-    }
-  });
+  if (choice.response === 0) {
+    await acceptAndPrint(job, store);
+  } else {
+    await rejectJob(job, store);
+  }
 
-  // Click on notification body = Accept
-  notification.on('click', () => {
-    acceptAndPrint(job, store);
-  });
-
-  // If notification is closed without action, resume polling
-  notification.on('close', () => {
-    // Resume polling after a short delay
-    setTimeout(() => startPolling(store), 2000);
-  });
-
-  notification.show();
+  activeJobId = null;
 }
 
 async function acceptAndPrint(job, store) {
-  const serverUrl = store.get('serverUrl');
+  const serverUrl = (store.get('serverUrl') || '').replace(/\/$/, '');
   const agentKey = store.get('agentKey');
 
   setTrayState('printing');
+  console.log(`[Poller] Accepting job #${job.id}…`);
 
   try {
-    // Tell backend: accepted
+    // 1. Notify backend: accepted
     await fetch(`${serverUrl}/api/agent/jobs/${job.id}/accept?agent_key=${encodeURIComponent(agentKey)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
 
-    // Download and print
+    // 2. Build exact-size PDF & silent print
     const printer = store.get('printer') || undefined;
     await handleAccept(job, printer);
 
-    // Tell backend: complete (success)
+    // 3. Notify backend: complete
     await fetch(`${serverUrl}/api/agent/jobs/${job.id}/complete?agent_key=${encodeURIComponent(agentKey)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -144,45 +147,38 @@ async function acceptAndPrint(job, store) {
     });
 
     setTrayState('idle');
-    console.log(`[Poller] Job #${job.id} printed successfully`);
+    console.log(`✅ [Poller] Job #${job.id} printed successfully!`);
 
   } catch (err) {
-    console.error(`[Poller] Print failed for job #${job.id}:`, err);
+    console.error(`❌ [Poller] Print failed for job #${job.id}:`, err.message);
     setTrayState('error');
 
-    // Report failure to backend
     try {
       await fetch(`${serverUrl}/api/agent/jobs/${job.id}/complete?agent_key=${encodeURIComponent(agentKey)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ success: false, error: err.message }),
       });
-    } catch (reportErr) {
-      console.warn('[Poller] Could not report failure:', reportErr.message);
-    }
+    } catch {}
   }
-
-  // Resume polling
-  startPolling(store);
 }
 
 async function rejectJob(job, store) {
-  const serverUrl = store.get('serverUrl');
+  const serverUrl = (store.get('serverUrl') || '').replace(/\/$/, '');
   const agentKey = store.get('agentKey');
 
   try {
     await fetch(`${serverUrl}/api/agent/jobs/${job.id}/reject?agent_key=${encodeURIComponent(agentKey)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason: 'Rejected by operator' }),
+      body: JSON.stringify({ reason: 'Declined by shop operator' }),
     });
-    console.log(`[Poller] Job #${job.id} rejected`);
+    console.log(`❌ [Poller] Job #${job.id} rejected.`);
   } catch (err) {
-    console.warn('[Poller] Could not report rejection:', err.message);
+    console.warn('[Poller] Reject reporting failed:', err.message);
   }
 
   setTrayState('idle');
-  startPolling(store);
 }
 
 module.exports = { startPolling, stopPolling };
