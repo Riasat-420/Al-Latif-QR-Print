@@ -11,16 +11,16 @@ const Job = {
   // ── Create ──────────────────────────────────────────────────
 
   /**
-   * Insert a new print job.
+   * Insert a new print job (supports optional back side and duplex/manual_flip modes).
    * Sets expires_at based on the configured retention window.
    */
-  async create({ shopId, filePath, thumbnailPath, widthMM, heightMM, copies, colorMode, paperSize, orientation }) {
+  async create({ shopId, filePath, backFilePath, thumbnailPath, widthMM, heightMM, copies, colorMode, paperSize, orientation, printMode }) {
     const [result] = await db.query(
       `INSERT INTO jobs
-         (shop_id, file_path, thumbnail_path, width_mm, height_mm, copies, color_mode, paper_size, orientation, expires_at)
+         (shop_id, file_path, back_file_path, thumbnail_path, width_mm, height_mm, copies, color_mode, paper_size, orientation, print_mode, expires_at)
        VALUES
-         (?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? DAY))`,
-      [shopId, filePath, thumbnailPath, widthMM, heightMM, copies || 1, colorMode || 'color', paperSize || 'A4', orientation || 'portrait', RETENTION_DAYS]
+         (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? DAY))`,
+      [shopId, filePath, backFilePath || null, thumbnailPath, widthMM, heightMM, copies || 1, colorMode || 'color', paperSize || 'A4', orientation || 'portrait', printMode || 'single', RETENTION_DAYS]
     );
     return result.insertId;
   },

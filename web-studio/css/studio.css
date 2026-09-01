@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   Al-Latif QR Print Studio — Brand Design System (v2.5)
+   Al-Latif QR Print Studio — Brand Design System (v3.0)
    Brand: Dev Riasat | Al-Latif Digital & Telecom Center
    ═══════════════════════════════════════════════════════════ */
 
@@ -33,7 +33,7 @@
   /* Theme Backgrounds & Glass */
   --bg-primary:     #0c0c0e;
   --bg-secondary:   #16161a;
-  --bg-card:        rgba(22, 22, 26, 0.88);
+  --bg-card:        rgba(22, 22, 26, 0.90);
   --bg-glass:       rgba(255, 255, 255, 0.04);
   --bg-glass-hover: rgba(255, 255, 255, 0.08);
 
@@ -163,7 +163,7 @@ body {
   font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   color: var(--text-muted);
   transition: color 0.3s ease;
 }
@@ -249,6 +249,13 @@ body {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+.btn-ghost {
+  background: transparent;
+  color: var(--color-primary-400);
+  border: 1px solid rgba(255, 77, 0, 0.25);
+}
+.btn-ghost:hover { background: rgba(255, 77, 0, 0.1); border-color: var(--color-primary-500); }
+
 .btn-lg {
   padding: 14px 28px;
   font-size: 0.95rem;
@@ -257,7 +264,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   STEP 1: SCAN, UPLOAD & CAMSCANNER CROP
+   STEP 1: SCAN & CAMSCANNER CROP
    ═══════════════════════════════════════════════════════════ */
 .upload-area {
   display: flex;
@@ -269,13 +276,7 @@ body {
   border-radius: var(--radius-2xl);
   background: rgba(255, 77, 0, 0.02);
   text-align: center;
-  transition: all 0.3s ease;
   min-height: 320px;
-}
-.upload-area.dragover {
-  border-color: var(--color-primary-500);
-  background: rgba(255, 77, 0, 0.08);
-  box-shadow: var(--shadow-glow);
 }
 
 .upload-icon {
@@ -305,45 +306,6 @@ body {
   max-width: 280px;
 }
 
-/* Camera */
-.camera-container {
-  position: relative;
-  width: 100%;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  background: #000;
-  border: 1px solid var(--border);
-}
-
-#cameraVideo { width: 100%; display: block; }
-.scan-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-
-.camera-controls {
-  position: absolute;
-  bottom: 20px;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
-}
-
-.capture-btn {
-  width: 68px;
-  height: 68px;
-  border-radius: var(--radius-full);
-  background: rgba(255, 77, 0, 0.25);
-  border: 3px solid #ffffff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow-glow);
-  transition: transform 0.15s;
-}
-.capture-btn:active { transform: scale(0.9); }
-.capture-ring { width: 50px; height: 50px; border-radius: var(--radius-full); background: #ffffff; }
-
-/* ── CamScanner Crop Screen ──────────────────────────── */
 .crop-screen {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -379,11 +341,7 @@ body {
   touch-action: none;
 }
 
-#cropCanvas {
-  max-width: 100%;
-  display: block;
-  cursor: crosshair;
-}
+#cropCanvas { max-width: 100%; display: block; cursor: crosshair; }
 
 .crop-toolbar {
   display: flex;
@@ -404,82 +362,150 @@ body {
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 .crop-tool-btn:hover { color: var(--color-primary-400); border-color: var(--color-primary-500); }
-.crop-tool-btn:active { transform: scale(0.95); }
 
 /* ═══════════════════════════════════════════════════════════
-   STEP 2: SIZE SELECTION
+   STEP 2: BATCH ID CARDS LIST
    ═══════════════════════════════════════════════════════════ */
-.size-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.size-card {
+.batch-cards-list {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 18px 12px;
-  background: var(--bg-card);
-  border: 2px solid var(--border);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition: all 0.25s ease;
-  font-family: inherit;
-  color: var(--text-primary);
-  backdrop-filter: blur(12px);
-}
-.size-card:hover { border-color: rgba(255, 77, 0, 0.4); background: var(--bg-glass-hover); }
-.size-card:active { transform: scale(0.96); }
-.size-card.selected {
-  border-color: var(--color-primary-500);
-  background: rgba(255, 77, 0, 0.08);
-  box-shadow: 0 0 20px var(--accent-glow);
+  gap: 14px;
 }
 
-.size-card-icon { font-size: 26px; margin-bottom: 8px; }
-.size-card-name { font-size: 0.875rem; font-weight: 700; }
-.size-card-dim { font-size: 0.725rem; color: var(--text-muted); margin-top: 2px; }
-
-.custom-size-inputs {
-  margin-top: 16px;
-  padding: 16px;
+.batch-card-box {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(12px);
 }
 
-.input-row { display: flex; gap: 12px; }
-.input-row > .input-group { flex: 1; }
+.batch-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
 
-.input-group label {
-  display: block;
-  font-size: 0.75rem;
+.batch-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.status-indicator {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.status-indicator.ok { background: #10b981; box-shadow: 0 0 8px #10b981; }
+.status-indicator.empty { background: #71717a; }
+
+.btn-remove-card {
+  background: transparent;
+  border: none;
+  color: #f87171;
+  font-size: 0.775rem;
   font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 4px;
+  cursor: pointer;
+}
+.btn-remove-card:hover { color: #ef4444; }
+
+.batch-card-uploads {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
-.input-group input {
+.upload-slot {
+  border: 1.5px dashed rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--bg-secondary);
+  transition: all 0.2s ease;
+}
+.upload-slot:hover { border-color: var(--color-primary-500); background: var(--bg-glass-hover); }
+.upload-slot.has-image { border-style: solid; border-color: rgba(255, 77, 0, 0.5); }
+
+.slot-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.slot-preview {
   width: 100%;
-  padding: 10px 14px;
+  aspect-ratio: 85.6 / 54;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.slot-preview img { width: 100%; height: 100%; object-fit: contain; }
+
+.slot-placeholder {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  padding: 4px;
+}
+
+.batch-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.batch-card-footer label {
+  font-size: 0.775rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.mini-stepper {
+  display: flex;
+  align-items: center;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 0.95rem;
-  outline: none;
-  transition: border-color 0.2s;
+  overflow: hidden;
 }
-.input-group input:focus { border-color: var(--color-primary-500); }
+
+.mini-step-btn {
+  width: 32px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mini-step-btn:hover { background: var(--bg-glass-hover); color: var(--color-primary-400); }
+.mini-step-val {
+  min-width: 28px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-primary-400);
+}
 
 /* ═══════════════════════════════════════════════════════════
-   STEP 3: SHEET CANVAS EDITOR & RULERS
+   STEP 3: A4 PAPER WORKSPACE & RULERS
    ═══════════════════════════════════════════════════════════ */
 .editor-header-bar {
   display: flex;
@@ -532,7 +558,6 @@ body {
   box-shadow: 0 2px 8px var(--accent-glow);
 }
 
-/* Rulers & Sheet Layout */
 .sheet-workspace {
   position: relative;
   background: #08080a;
@@ -576,23 +601,20 @@ body {
   right: 3px;
 }
 
-.canvas-container {
+.canvas-container.a4-paper-shadow {
   flex: 1;
   background: #ffffff;
-  border-radius: 4px;
+  border-radius: 2px;
   overflow: hidden;
+  box-shadow: 0 0 0 1px #d1d5db, 0 8px 30px rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
-  min-height: 240px;
+  min-height: 280px;
 }
 
-.canvas-container canvas {
-  max-width: 100%;
-}
+.canvas-container canvas { max-width: 100%; }
 
-/* Comprehensive Toolbar */
 .editor-toolbar {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -616,35 +638,20 @@ body {
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
   font-size: 10px;
   font-weight: 600;
 }
-.tool-btn:hover {
-  color: var(--color-primary-400);
-  border-color: var(--color-primary-500);
-  background: var(--bg-glass-hover);
-}
-.tool-btn:active { transform: scale(0.92); }
-
-.tool-danger { color: #f87171; }
-.tool-danger:hover { color: #ef4444; border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+.tool-btn:hover { color: var(--color-primary-400); border-color: var(--color-primary-500); }
 
 /* ═══════════════════════════════════════════════════════════
-   STEP 4: SETTINGS
+   STEP 4 & STEP 5
    ═══════════════════════════════════════════════════════════ */
-.settings-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-top: 12px;
-}
-
 .setting-card {
   padding: 16px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
+  margin-bottom: 12px;
 }
 
 .setting-label {
@@ -675,10 +682,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.2s ease;
 }
-.option-btn:hover { border-color: rgba(255, 77, 0, 0.4); }
-.option-btn:active { transform: scale(0.95); }
 .option-btn.active {
   color: #ffffff;
   background: var(--color-primary-500);
@@ -691,13 +695,11 @@ body {
   width: 14px;
   height: 14px;
   border-radius: var(--radius-full);
-  flex-shrink: 0;
 }
 
 .copies-stepper {
   display: flex;
   align-items: center;
-  gap: 0;
   background: var(--bg-secondary);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
@@ -719,7 +721,6 @@ body {
   cursor: pointer;
 }
 .stepper-btn:hover { background: var(--bg-glass-hover); color: var(--color-primary-400); }
-.stepper-btn:active { background: rgba(255, 77, 0, 0.15); }
 
 .stepper-value {
   min-width: 48px;
@@ -729,9 +730,6 @@ body {
   color: var(--color-primary-400);
 }
 
-/* ═══════════════════════════════════════════════════════════
-   STEP 5: REVIEW
-   ═══════════════════════════════════════════════════════════ */
 .review-preview-card {
   background: #ffffff;
   border-radius: var(--radius-md);
@@ -741,15 +739,11 @@ body {
   justify-content: center;
   margin-bottom: 16px;
   box-shadow: var(--shadow-lg);
-  min-height: 200px;
+  min-height: 220px;
   border: 1px solid var(--border);
 }
 
-.review-preview-img {
-  max-width: 100%;
-  max-height: 280px;
-  border-radius: 4px;
-}
+.review-preview-img { max-width: 100%; max-height: 280px; border-radius: 2px; }
 
 .review-summary {
   background: var(--bg-card);
@@ -767,15 +761,10 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .summary-row:last-child { border-bottom: none; }
-
 .summary-label { font-size: 0.85rem; color: var(--text-secondary); }
 .summary-value { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); }
 
-.btn-submit { margin-top: 8px; }
-
-/* ═══════════════════════════════════════════════════════════
-   STEP 6: STATUS
-   ═══════════════════════════════════════════════════════════ */
+/* ── Status & Overlay ─────────────────────────────────── */
 .status-step {
   display: flex;
   flex-direction: column;
@@ -804,23 +793,8 @@ body {
   align-items: center;
   justify-content: center;
 }
-
 .status-card.pending .status-icon { color: var(--color-primary-400); }
-.status-card.accepted .status-icon { color: var(--color-accent-400); }
-.status-card.printed .status-icon { color: #10b981; }
-.status-card.rejected .status-icon { color: #ef4444; }
-.status-card.failed .status-icon { color: #ef4444; }
 
-.status-title {
-  font-family: var(--font-display);
-  font-size: 1.35rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.status-message { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.5; }
-
-/* Spinner */
 .spinner {
   width: 46px;
   height: 46px;
@@ -833,7 +807,6 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Loading Overlay */
 .loading-overlay {
   position: fixed;
   inset: 0;
@@ -858,7 +831,6 @@ body {
   animation: spin 0.7s linear infinite;
 }
 
-/* Toast */
 .toast-container {
   position: fixed;
   bottom: 24px;
@@ -880,7 +852,6 @@ body {
   white-space: nowrap;
   box-shadow: var(--shadow-lg);
 }
-
 .toast.error { background: #dc2626; color: #ffffff; }
 .toast.success { background: #16a34a; color: #ffffff; }
 .toast.info { background: var(--color-primary-600); color: #ffffff; }
@@ -890,6 +861,5 @@ body {
 
 @media (min-width: 600px) {
   .step-content { padding: 24px; }
-  .size-grid { grid-template-columns: repeat(3, 1fr); }
   .editor-toolbar { grid-template-columns: repeat(8, 1fr); }
 }

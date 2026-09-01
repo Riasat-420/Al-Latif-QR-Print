@@ -1,99 +1,224 @@
 /**
- * editor.js — Step 2 (Size Selection) + Step 3 (High-Precision Sheet Canvas Editor).
+ * editor.js — Step 2 (Batch ID Cards Manager) + Step 3 (A4 Physical Sheet Canvas Editor).
  *
- * Features:
- * - Real paper workspace with top & left mm measurement rulers
- * - Live physical dimension readout overlay badge
- * - Image selection, free drag, corner scaling, rotate handles
- * - Duplicate / Clone object for multi-card placement (front & back on 1 page)
- * - Flip Horizontal & Flip Vertical
- * - Rotate 90°
- * - Add extra images (e.g. back side of CNIC / ID Card)
- * - Fit Width & Center tools
- * - Front & Back multi-page canvas tabs
+ * Implements the batch multi-card placement workflow inspired by id-card-printer-batch:
+ * - Multi-card list (Card 1, Card 2, Card 3...) with separate Front & Back uploads and copy counts
+ * - A4 default physical sheet (210×297mm) with physical mm scale & rulers
+ * - 3 Layout modes:
+ *     1. cnic_same_page: Front & Back together on same A4 sheet (standard CNIC copy)
+ *     2. grid_batch: 2×4 auto-flowing A4 grid (Page 1 Fronts, Page 2 Backs)
+ *     3. free_canvas: Free dragging, scaling, rotating, and duplicating
+ * - Multi-page export (Front & Back payloads) for duplex / manual flip printing
  */
 
 (() => {
   const { state } = App;
 
+  // Standard Dimensions (in mm)
+  const A4_W = 210, A4_H = 297;
+  const ID_W = 85.6, ID_H = 54.0;
+  const COLS = 2, ROWS = 4;
+
   let fabricCanvas = null;
-  let frontData = null;  // Serialized front canvas state
-  let backData = null;   // Serialized back canvas state
-  let activeSide = 'front';
+  let activePage = 'front'; // 'front' or 'back'
+  let frontPageDataUrl = null;
+  let backPageDataUrl = null;
+
+  // Batch Cards State
+  let cards = [];
+  let nextCardId = 1;
+  let layoutMode = 'cnic_same_page'; // 'cnic_same_page', 'grid_batch', 'free_canvas'
+  let cardGapMM = 8;
+
+  function newCard(initialFront = null) {
+    return {
+      id: nextCardId++,
+      name: `Card ${nextCardId - 1}`,
+      frontData: initialFront || null,
+      backData: null,
+      copies: 1,
+    };
+  }
 
   // ═══════════════════════════════════════════════════════
-  // STEP 2: SIZE SELECTION
+  // STEP 2: BATCH ID CARDS LIST & CONTROLLER
   // ═══════════════════════════════════════════════════════
 
-  const sizeCards = document.querySelectorAll('.size-card');
-  const customInputs = App.$('customSizeInputs');
+  function initBatchCards() {
+    if (cards.length === 0) {
+      cards.push(newCard(state.scannedImage));
+    } else if (state.scannedImage && !cards[0].frontData) {
+      cards[0].frontData = state.scannedImage;
+    }
+    renderCardsList();
+  }
 
-  sizeCards.forEach(card => {
-    card.addEventListener('click', () => {
-      sizeCards.forEach(c => c.classList.remove('selected'));
-      card.classList.add('selected');
+  function renderCardsList() {
+    const list = App.$('batchCardsList');
+    if (!list) return;
+    list.innerHTML = '';
 
-      const w = parseFloat(card.dataset.width);
-      const h = parseFloat(card.dataset.height);
+    cards.forEach((c, idx) => {
+      const cardBox = document.createElement('div');
+      cardBox.className = 'batch-card-box';
 
-      if (w === 0 && h === 0) {
-        customInputs.style.display = 'block';
-        state.sizeName = 'Custom';
-      } else {
-        customInputs.style.display = 'none';
-        state.widthMM = w;
-        state.heightMM = h;
-        state.sizeName = card.querySelector('.size-card-name').textContent;
+      cardBox.innerHTML = `
+        <div class="batch-card-header">
+          <div class="batch-card-title">
+            <span class="status-indicator ${c.frontData ? 'ok' : 'empty'}"></span>
+            <b>Document / ID Card #${idx + 1}</b>
+          </div>
+          ${cards.length > 1 ? `<button class="btn-remove-card" data-id="${c.id}">✕ Remove</button>` : ''}
+        </div>
 
-        App.goNext(); // Triggers stepChanged for step 3
-      }
+        <div class="batch-card-uploads">
+          <!-- Front Side -->
+          <div class="upload-slot ${c.frontData ? 'has-image' : ''}" data-side="front" data-id="${c.id}">
+            <div class="slot-label">Front Side *</div>
+            <div class="slot-preview">
+              ${c.frontData ? `<img src="${c.frontData}" alt="Front">` : `<div class="slot-placeholder">📷 Tap to upload Front</div>`}
+            </div>
+            <input type="file" accept="image/*" class="slot-file-input" style="display:none">
+          </div>
+
+          <!-- Back Side -->
+          <div class="upload-slot ${c.backData ? 'has-image' : ''}" data-side="back" data-id="${c.id}">
+            <div class="slot-label">Back Side (Optional)</div>
+            <div class="slot-preview">
+              ${c.backData ? `<img src="${c.backData}" alt="Back">` : `<div class="slot-placeholder">📷 Tap to upload Back</div>`}
+            </div>
+            <input type="file" accept="image/*" class="slot-file-input" style="display:none">
+          </div>
+        </div>
+
+        <div class="batch-card-footer">
+          <label>Copies of this card on sheet:</label>
+          <div class="mini-stepper">
+            <button class="mini-step-btn minus" data-id="${c.id}">−</button>
+            <span class="mini-step-val">${c.copies}</span>
+            <button class="mini-step-btn plus" data-id="${c.id}">+</button>
+          </div>
+        </div>
+      `;
+
+      list.appendChild(cardBox);
     });
+
+    // Bind event listeners
+    bindCardListEvents();
+  }
+
+  function bindCardListEvents() {
+    // Slot click to upload
+    document.querySelectorAll('.upload-slot').forEach(slot => {
+      const input = slot.querySelector('.slot-file-input');
+      const cardId = parseInt(slot.dataset.id);
+      const side = slot.dataset.side;
+
+      slot.addEventListener('click', e => {
+        if (e.target !== input) input.click();
+      });
+
+      input.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const targetCard = cards.find(x => x.id === cardId);
+          if (targetCard) {
+            if (side === 'front') targetCard.frontData = ev.target.result;
+            else targetCard.backData = ev.target.result;
+            renderCardsList();
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    // Remove Card
+    document.querySelectorAll('.btn-remove-card').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = parseInt(btn.dataset.id);
+        cards = cards.filter(x => x.id !== id);
+        renderCardsList();
+      });
+    });
+
+    // Copies plus/minus
+    document.querySelectorAll('.mini-step-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = parseInt(btn.dataset.id);
+        const card = cards.find(x => x.id === id);
+        if (!card) return;
+        if (btn.classList.contains('plus')) card.copies = Math.min(16, card.copies + 1);
+        else card.copies = Math.max(1, card.copies - 1);
+        renderCardsList();
+      });
+    });
+  }
+
+  // Add Card button
+  App.$('addNewCardBtn').addEventListener('click', () => {
+    cards.push(newCard());
+    renderCardsList();
   });
 
-  // Custom size apply
-  App.$('applyCustomSize').addEventListener('click', () => {
-    const w = parseFloat(App.$('customWidth').value);
-    const h = parseFloat(App.$('customHeight').value);
+  // Direct shortcut from Step 1
+  const batchDirect = App.$('batchDirectBtn');
+  if (batchDirect) {
+    batchDirect.addEventListener('click', () => {
+      initBatchCards();
+      App.goToStep(2);
+    });
+  }
 
-    if (!w || !h || w < 10 || h < 10) {
-      App.showToast('Please enter valid dimensions (minimum 10mm).', 'error');
-      return;
-    }
+  // Layout mode buttons
+  const modeOptions = App.$('layoutModeOptions');
+  if (modeOptions) {
+    modeOptions.querySelectorAll('.option-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        modeOptions.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        layoutMode = btn.dataset.value;
+      });
+    });
+  }
 
-    state.widthMM = w;
-    state.heightMM = h;
-    state.sizeName = `Custom (${w} × ${h} mm)`;
+  // Gap slider
+  const gapRange = App.$('gapRange');
+  const gapValue = App.$('gapValue');
+  if (gapRange && gapValue) {
+    gapRange.addEventListener('input', () => {
+      cardGapMM = parseInt(gapRange.value, 10);
+      gapValue.textContent = `${cardGapMM} mm`;
+    });
+  }
 
+  // Go to Layout
+  App.$('goToLayoutBtn').addEventListener('click', () => {
+    state.widthMM = A4_W;
+    state.heightMM = A4_H;
+    state.paperSize = 'A4';
     App.goNext();
   });
 
   // ═══════════════════════════════════════════════════════
-  // STEP 3: HIGH-PRECISION FABRIC.JS EDITOR
+  // STEP 3: PHYSICAL A4 PAPER WORKSPACE & FABRIC.JS CANVAS
   // ═══════════════════════════════════════════════════════
 
-  function initOrResizeEditor() {
+  function initOrBuildSheet() {
     const container = App.$('canvasContainer');
     const canvasEl = App.$('editorCanvas');
 
-    // Default to A4 proportions if custom size not set yet
-    const targetW = state.widthMM || 210;
-    const targetH = state.heightMM || 297;
+    // Default sheet is A4 (210 × 297mm)
+    const sheetW = state.widthMM || A4_W;
+    const sheetH = state.heightMM || A4_H;
+    const ratio = sheetH / sheetW;
 
-    // Available width on screen
-    const availableW = Math.max(280, Math.min(container.clientWidth || (window.innerWidth - 64), 420));
-    const ratio = targetH / targetW;
+    const availableW = Math.max(280, Math.min(container.clientWidth || (window.innerWidth - 64), 380));
+    const cWidth = availableW;
+    const cHeight = Math.round(cWidth * ratio);
 
-    let cWidth = availableW;
-    let cHeight = Math.round(cWidth * ratio);
-
-    // Constrain height to max 58vh
-    const maxH = window.innerHeight * 0.52;
-    if (cHeight > maxH) {
-      cHeight = maxH;
-      cWidth = Math.round(cHeight / ratio);
-    }
-
-    // Initialize or resize Fabric canvas
     if (!fabricCanvas) {
       canvasEl.width = cWidth;
       canvasEl.height = cHeight;
@@ -106,7 +231,6 @@
         preserveObjectStacking: true,
       });
 
-      // Selection style
       fabric.Object.prototype.set({
         transparentCorners: false,
         cornerColor: '#ff4d00',
@@ -115,130 +239,173 @@
         cornerSize: 12,
         cornerStyle: 'circle',
         padding: 4,
-        borderDashArray: [4, 4],
       });
 
-      // Listen to object selection/scaling to update dimension badge
       fabricCanvas.on('selection:created', updateDimBadge);
       fabricCanvas.on('selection:updated', updateDimBadge);
       fabricCanvas.on('selection:cleared', clearDimBadge);
       fabricCanvas.on('object:scaling', updateDimBadge);
       fabricCanvas.on('object:modified', updateDimBadge);
-
-      // Load initial image
-      if (state.scannedImage) {
-        addImageToCanvas(state.scannedImage, true);
-      }
     } else {
       fabricCanvas.setWidth(cWidth);
       fabricCanvas.setHeight(cHeight);
-      fabricCanvas.renderAll();
     }
 
-    updateRulers(targetW, targetH);
+    updateRulers(sheetW, sheetH);
+
+    // Build the page layout onto Fabric Canvas based on cards & layoutMode
+    buildPageLayout(activePage);
   }
 
-  // ── Ruler Measurement Display ─────────────────────────
   function updateRulers(wMM, hMM) {
     const rulerTop = App.$('rulerTop');
     const rulerLeft = App.$('rulerLeft');
-
     if (rulerTop) {
       rulerTop.innerHTML = `
         <span class="ruler-marker" style="left: 0%">0mm</span>
-        <span class="ruler-marker" style="left: 33%">${Math.round(wMM * 0.33)}mm</span>
-        <span class="ruler-marker" style="left: 66%">${Math.round(wMM * 0.66)}mm</span>
+        <span class="ruler-marker" style="left: 25%">${Math.round(wMM * 0.25)}mm</span>
+        <span class="ruler-marker" style="left: 50%">${Math.round(wMM * 0.5)}mm</span>
+        <span class="ruler-marker" style="left: 75%">${Math.round(wMM * 0.75)}mm</span>
         <span class="ruler-marker" style="left: 100%">${Math.round(wMM)}mm</span>
       `;
     }
-
     if (rulerLeft) {
       rulerLeft.innerHTML = `
         <span class="ruler-marker-v" style="top: 0%">0</span>
-        <span class="ruler-marker-v" style="top: 50%">${Math.round(hMM * 0.5)}</span>
+        <span class="ruler-marker-v" style="top: 33%">${Math.round(hMM * 0.33)}</span>
+        <span class="ruler-marker-v" style="top: 66%">${Math.round(hMM * 0.66)}</span>
         <span class="ruler-marker-v" style="top: 100%">${Math.round(hMM)}</span>
       `;
     }
   }
 
-  // ── Dimension Badge Readout ───────────────────────────
   function updateDimBadge() {
     const obj = fabricCanvas?.getActiveObject();
     const badge = App.$('dimBadge');
     if (!obj || !badge || !fabricCanvas) return;
 
-    const paperW = state.widthMM || 210;
-    const paperH = state.heightMM || 297;
+    const paperW = state.widthMM || A4_W;
+    const paperH = state.heightMM || A4_H;
 
-    const objW = obj.getScaledWidth();
-    const objH = obj.getScaledHeight();
+    const realW_mm = ((obj.getScaledWidth() / fabricCanvas.getWidth()) * paperW).toFixed(1);
+    const realH_mm = ((obj.getScaledHeight() / fabricCanvas.getHeight()) * paperH).toFixed(1);
 
-    const realW_mm = ((objW / fabricCanvas.getWidth()) * paperW).toFixed(1);
-    const realH_mm = ((objH / fabricCanvas.getHeight()) * paperH).toFixed(1);
-
-    badge.textContent = `Selected: ${realW_mm} × ${realH_mm} mm`;
+    badge.textContent = `Card: ${realW_mm} × ${realH_mm} mm`;
     badge.classList.add('active');
   }
 
   function clearDimBadge() {
     const badge = App.$('dimBadge');
     if (badge) {
-      badge.textContent = `Sheet: ${state.widthMM || 210} × ${state.heightMM || 297} mm`;
+      badge.textContent = `A4 Sheet: 210 × 297 mm`;
       badge.classList.remove('active');
     }
   }
 
-  // ── Add Image to Fabric Canvas ────────────────────────
-  function addImageToCanvas(dataUrl, isInitial = false) {
-    fabric.Image.fromURL(dataUrl, img => {
-      if (!fabricCanvas) return;
+  // ── Auto-Layout Generator for A4 Sheet ────────────────
+  async function buildPageLayout(pageSide = 'front') {
+    if (!fabricCanvas) return;
+    fabricCanvas.clear();
+    fabricCanvas.backgroundColor = '#ffffff';
 
-      const cW = fabricCanvas.getWidth();
-      const cH = fabricCanvas.getHeight();
+    const cW = fabricCanvas.getWidth();
+    const cH = fabricCanvas.getHeight();
+    const scaleFactor = cW / A4_W; // pixels per mm
 
-      // Fit to 85% of canvas initially
-      const scaleX = (cW * 0.88) / img.width;
-      const scaleY = (cH * 0.88) / img.height;
-      const scale = Math.min(scaleX, scaleY, 1.0);
+    const cardPxW = ID_W * scaleFactor;
+    const cardPxH = ID_H * scaleFactor;
+    const gapPx = cardGapMM * scaleFactor;
 
-      img.set({
-        scaleX: scale,
-        scaleY: scale,
-        left: (cW - img.width * scale) / 2,
-        top: (cH - img.height * scale) / 2,
+    if (layoutMode === 'cnic_same_page') {
+      // 🪪 CNIC Mode: Front on top, Back on bottom centered on A4 sheet
+      const firstCard = cards[0] || newCard();
+      const topY = (cH - (cardPxH * 2 + gapPx)) / 2;
+
+      // Front
+      if (firstCard.frontData) {
+        await addCardImageAt(firstCard.frontData, (cW - cardPxW) / 2, topY, cardPxW, cardPxH);
+      }
+      // Back
+      if (firstCard.backData) {
+        await addCardImageAt(firstCard.backData, (cW - cardPxW) / 2, topY + cardPxH + gapPx, cardPxW, cardPxH);
+      }
+
+    } else if (layoutMode === 'grid_batch') {
+      // 📄 Grid Mode: 2x4 grid on A4
+      const gridW = COLS * cardPxW + (COLS - 1) * gapPx;
+      const gridH = ROWS * cardPxH + (ROWS - 1) * gapPx;
+      const startX = (cW - gridW) / 2;
+      const startY = (cH - gridH) / 2;
+
+      // Build card slots sequence
+      const slots = [];
+      cards.forEach(c => {
+        const src = pageSide === 'front' ? c.frontData : c.backData;
+        for (let i = 0; i < c.copies; i++) {
+          if (src) slots.push(src);
+        }
       });
 
-      fabricCanvas.add(img);
-      fabricCanvas.setActiveObject(img);
-      fabricCanvas.renderAll();
-      updateDimBadge();
+      for (let i = 0; i < Math.min(slots.length, COLS * ROWS); i++) {
+        const col = i % COLS;
+        const row = Math.floor(i / COLS);
+        const x = startX + col * (cardPxW + gapPx);
+        const y = startY + row * (cardPxH + gapPx);
+        await addCardImageAt(slots[i], x, y, cardPxW, cardPxH);
+      }
+
+    } else {
+      // Free Canvas Mode: Load primary image centered
+      const initialImg = cards[0]?.frontData || state.scannedImage;
+      if (initialImg) {
+        await addCardImageAt(initialImg, (cW - cardPxW) / 2, (cH - cardPxH) / 2, cardPxW, cardPxH);
+      }
+    }
+
+    fabricCanvas.renderAll();
+  }
+
+  function addCardImageAt(dataUrl, left, top, width, height) {
+    return new Promise(resolve => {
+      fabric.Image.fromURL(dataUrl, img => {
+        if (!fabricCanvas) { resolve(); return; }
+
+        img.set({
+          left,
+          top,
+          scaleX: width / img.width,
+          scaleY: height / img.height,
+        });
+
+        fabricCanvas.add(img);
+        resolve(img);
+      });
     });
   }
 
-  // ── Duplicate / Clone Selected Object ─────────────────
+  // ── Precision Toolbar Controls ────────────────────────
   App.$('duplicateBtn').addEventListener('click', () => {
     const activeObj = fabricCanvas?.getActiveObject();
     if (!activeObj) {
-      App.showToast('Please tap on an image to select it first.', 'info');
+      App.showToast('Tap on a card/image to select it first.', 'info');
       return;
     }
 
     activeObj.clone(cloned => {
       fabricCanvas.discardActiveObject();
       cloned.set({
-        left: Math.min(fabricCanvas.getWidth() - 40, activeObj.left + 24),
-        top: Math.min(fabricCanvas.getHeight() - 40, activeObj.top + 24),
+        left: Math.min(fabricCanvas.getWidth() - 30, activeObj.left + 16),
+        top: Math.min(fabricCanvas.getHeight() - 30, activeObj.top + 16),
         evented: true,
       });
       fabricCanvas.add(cloned);
       fabricCanvas.setActiveObject(cloned);
       fabricCanvas.renderAll();
-      App.showToast('Image duplicated!', 'success');
+      App.showToast('Card duplicated!', 'success');
       updateDimBadge();
     });
   });
 
-  // ── Rotate 90° Clockwise ──────────────────────────────
   App.$('rotateRightBtn').addEventListener('click', () => {
     const obj = getTargetObject();
     if (obj) {
@@ -248,25 +415,16 @@
     }
   });
 
-  // ── Flip Horizontal ───────────────────────────────────
   App.$('flipHBtn').addEventListener('click', () => {
     const obj = getTargetObject();
-    if (obj) {
-      obj.set('flipX', !obj.flipX);
-      fabricCanvas.renderAll();
-    }
+    if (obj) { obj.set('flipX', !obj.flipX); fabricCanvas.renderAll(); }
   });
 
-  // ── Flip Vertical ─────────────────────────────────────
   App.$('flipVBtn').addEventListener('click', () => {
     const obj = getTargetObject();
-    if (obj) {
-      obj.set('flipY', !obj.flipY);
-      fabricCanvas.renderAll();
-    }
+    if (obj) { obj.set('flipY', !obj.flipY); fabricCanvas.renderAll(); }
   });
 
-  // ── Center on Page ────────────────────────────────────
   App.$('centerBtn').addEventListener('click', () => {
     const obj = getTargetObject();
     if (obj && fabricCanvas) {
@@ -277,28 +435,25 @@
     }
   });
 
-  // ── Fit to Width ──────────────────────────────────────
   App.$('fitBtn').addEventListener('click', () => {
     const obj = getTargetObject();
     if (obj && fabricCanvas) {
-      const cW = fabricCanvas.getWidth();
-      const cH = fabricCanvas.getHeight();
-      const scale = Math.min((cW * 0.94) / obj.width, (cH * 0.94) / obj.height);
+      const scaleFactor = fabricCanvas.getWidth() / A4_W;
+      const targetW = ID_W * scaleFactor;
+      const targetH = ID_H * scaleFactor;
 
       obj.set({
-        scaleX: scale,
-        scaleY: scale,
-        left: (cW - obj.width * scale) / 2,
-        top: (cH - obj.height * scale) / 2,
+        scaleX: targetW / obj.width,
+        scaleY: targetH / obj.height,
         angle: 0,
       });
       obj.setCoords();
       fabricCanvas.renderAll();
+      App.showToast('Snapped to standard ID Card size (85.6 × 54 mm)', 'info');
       updateDimBadge();
     }
   });
 
-  // ── Delete Selected ───────────────────────────────────
   App.$('deleteObjBtn').addEventListener('click', () => {
     const obj = fabricCanvas?.getActiveObject();
     if (obj) {
@@ -307,52 +462,44 @@
       fabricCanvas.renderAll();
       clearDimBadge();
     } else {
-      App.showToast('Please select an image to delete.', 'info');
+      App.showToast('Please select a card to delete.', 'info');
     }
   });
 
-  // ── Add Extra Image (e.g. Back of ID card) ───────────
   App.$('addImageBtn').addEventListener('click', () => App.$('addImageInput').click());
   App.$('addImageInput').addEventListener('change', e => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = ev => {
-      addImageToCanvas(ev.target.result);
-      App.showToast('Additional image added!', 'success');
+      const scaleFactor = fabricCanvas.getWidth() / A4_W;
+      addCardImageAt(ev.target.result, 40, 40, ID_W * scaleFactor, ID_H * scaleFactor);
+      App.showToast('Added image to sheet!', 'success');
     };
     reader.readAsDataURL(file);
     e.target.value = '';
   });
 
-  // ── Front / Back Multi-page Tabs ──────────────────────
-  App.$('frontTab').addEventListener('click', () => switchSide('front'));
-  App.$('backTab').addEventListener('click', () => switchSide('back'));
+  // Page 1 / Page 2 Tabs
+  App.$('frontTab').addEventListener('click', () => switchSheetSide('front'));
+  App.$('backTab').addEventListener('click', () => switchSheetSide('back'));
 
-  function switchSide(side) {
-    if (!fabricCanvas || side === activeSide) return;
+  async function switchSheetSide(side) {
+    if (side === activePage) return;
 
-    if (activeSide === 'front') {
-      frontData = fabricCanvas.toJSON();
+    if (activePage === 'front') {
+      frontPageDataUrl = exportCanvas();
     } else {
-      backData = fabricCanvas.toJSON();
+      backPageDataUrl = exportCanvas();
     }
 
-    fabricCanvas.clear();
-    fabricCanvas.backgroundColor = '#ffffff';
-
-    activeSide = side;
-    const data = side === 'front' ? frontData : backData;
-
-    if (data) {
-      fabricCanvas.loadFromJSON(data, () => fabricCanvas.renderAll());
-    }
-
+    activePage = side;
     App.$('frontTab').classList.toggle('active', side === 'front');
     App.$('backTab').classList.toggle('active', side === 'back');
+
+    await buildPageLayout(side);
   }
 
-  // Helper: Get active object, or fallback to first object on canvas
   function getTargetObject() {
     if (!fabricCanvas) return null;
     let obj = fabricCanvas.getActiveObject();
@@ -366,34 +513,49 @@
     return obj;
   }
 
-  // ── Canvas Export for High-Res Print ──────────────────
   function exportCanvas() {
     if (!fabricCanvas) return null;
-
     fabricCanvas.discardActiveObject();
     fabricCanvas.renderAll();
 
     return fabricCanvas.toDataURL({
       format: 'png',
       quality: 1.0,
-      multiplier: 2.5, // Crisp high-res render for printer
+      multiplier: 3.0, // High-res 300 DPI for clean physical print
     });
   }
 
-  // ── When entering Step 3, initialize reliably ─────────
+  // Navigation from Step 3 to Step 4
+  App.$('goToSettingsBtn').addEventListener('click', () => {
+    // Save current canvas state
+    if (activePage === 'front') frontPageDataUrl = exportCanvas();
+    else backPageDataUrl = exportCanvas();
+
+    App.goNext();
+  });
+
+  // ── Step transition hooks ─────────────────────────────
   window.addEventListener('stepChanged', e => {
-    if (e.detail.step === 3) {
-      // Use requestAnimationFrame so DOM transition completes
+    if (e.detail.step === 2) {
+      initBatchCards();
+    } else if (e.detail.step === 3) {
       requestAnimationFrame(() => {
-        initOrResizeEditor();
+        initOrBuildSheet();
       });
     }
   });
 
-  // Expose
   window.EditorModule = {
     exportCanvas,
-    getCanvas: () => fabricCanvas,
-    initOrResizeEditor,
+    getExportPayload: () => {
+      if (activePage === 'front') frontPageDataUrl = exportCanvas();
+      else backPageDataUrl = exportCanvas();
+
+      return {
+        front: frontPageDataUrl,
+        back: backPageDataUrl || null,
+        hasBackSide: !!backPageDataUrl || cards.some(c => !!c.backData),
+      };
+    },
   };
 })();

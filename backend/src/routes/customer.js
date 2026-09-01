@@ -43,16 +43,30 @@ router.get('/shop/:token', async (req, res) => {
 });
 
 // ── POST /api/jobs ────────────────────────────────────────────
-// Accepts a print job: image file + print settings.
+// Accepts a print job: image file + optional back_image + print settings.
 // Returns the new job's ID so the customer can poll for status.
-router.post('/jobs', upload.single('image'), async (req, res) => {
+const uploadFields = upload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'back_image', maxCount: 1 },
+]);
+
+router.post('/jobs', (req, res, next) => {
+  uploadFields(req, res, err => {
+    if (err) return next(err);
+    next();
+  });
+}, async (req, res) => {
   try {
-    const { shop_token, widthMM, heightMM, copies, colorMode, paperSize, orientation } = req.body;
+    const { shop_token, widthMM, heightMM, copies, colorMode, paperSize, orientation, printMode } = req.body;
 
     if (!shop_token) {
       return res.status(400).json({ error: 'shop_token is required' });
     }
-    if (!req.file) {
+
+    const frontFile = req.files?.image ? req.files.image[0] : (req.file || null);
+    const backFile = req.files?.back_image ? req.files.back_image[0] : null;
+
+    if (!frontFile) {
       return res.status(400).json({ error: 'Image file is required (field name: "image")' });
     }
     if (!widthMM || !heightMM) {
@@ -61,36 +75,35 @@ router.post('/jobs', upload.single('image'), async (req, res) => {
 
     const shop = await Shop.findByToken(shop_token);
     if (!shop) {
-      return res.status(404).json({ error: 'Invalid shop token' });
+      return res.status(404).json({ error: 'Shop not found for this token' });
     }
 
-    // Generate thumbnail for dashboard / agent notification
+    // Generate small preview thumbnail from front image
     let thumbnailPath = null;
     try {
-      thumbnailPath = await generateThumbnail(req.file.path);
-    } catch (thumbErr) {
-      console.warn('Thumbnail generation failed (non-fatal):', thumbErr.message);
+      thumbnailPath = await generateThumbnail(frontFile.path, UPLOAD_DIR);
+    } catch (e) {
+      console.warn('Thumbnail generation skipped:', e.message);
     }
 
     const jobId = await Job.create({
       shopId: shop.id,
-      filePath: req.file.filename,
+      filePath: frontFile.path,
+      backFilePath: backFile ? backFile.path : null,
       thumbnailPath,
       widthMM: parseFloat(widthMM),
       heightMM: parseFloat(heightMM),
-      copies: parseInt(copies) || 1,
+      copies: parseInt(copies, 10) || 1,
       colorMode: colorMode || 'color',
       paperSize: paperSize || 'A4',
       orientation: orientation || 'portrait',
+      printMode: printMode || 'single',
     });
 
     res.status(201).json({ job_id: jobId });
   } catch (err) {
     console.error('POST /api/jobs error:', err);
-    if (err.message && err.message.includes('Unsupported file type')) {
-      return res.status(400).json({ error: err.message });
-    }
-    res.status(500).json({ error: 'Failed to create job' });
+    res.status(500).json({ error: 'Failed to create print job' });
   }
 });
 

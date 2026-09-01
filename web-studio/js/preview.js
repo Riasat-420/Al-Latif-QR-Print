@@ -1,8 +1,8 @@
 /**
- * preview.js — Step 5: Review preview and submit.
+ * preview.js — Step 5: Review Preview and Submit Print Job.
  *
- * Shows a rendered preview of the canvas, a summary of all settings,
- * and the Submit button that POSTs the job to the backend.
+ * Shows rendered preview of the physical A4 sheet, summary of options,
+ * and submits multipart payload containing Front Page and optional Back Page to backend.
  */
 
 (() => {
@@ -15,50 +15,55 @@
   });
 
   function populateReview() {
-    // Render canvas preview
-    const previewDataUrl = window.EditorModule?.exportCanvas();
-    if (previewDataUrl) {
-      App.$('reviewPreviewImg').src = previewDataUrl;
+    const payload = window.EditorModule?.getExportPayload();
+    if (payload && payload.front) {
+      App.$('reviewPreviewImg').src = payload.front;
     }
 
-    // Fill summary
-    App.$('reviewSize').textContent = state.sizeName || `${state.widthMM} × ${state.heightMM} mm`;
-    App.$('reviewPaper').textContent = state.paperSize;
-    App.$('reviewColor').textContent = state.colorMode === 'color' ? 'Color' : 'Black & White';
-    App.$('reviewOrientation').textContent = state.orientation === 'portrait' ? 'Portrait' : 'Landscape';
-    App.$('reviewCopies').textContent = state.copies;
+    const modeLabels = {
+      single: 'Single-Sided (1 Page)',
+      manual_flip: 'Manual Flip 2-Sided (Non-Duplex)',
+      duplex: 'Auto Double-Sided (Duplex)',
+    };
 
-    // Simple sheet estimate: 1 sheet per copy (MVP — no multi-page)
-    App.$('reviewSheets').textContent = `${state.copies} sheet${state.copies > 1 ? 's' : ''}`;
+    App.$('reviewPaper').textContent = `${state.paperSize || 'A4'} Sheet (${state.widthMM || 210} × ${state.heightMM || 297} mm)`;
+    App.$('reviewDuplex').textContent = modeLabels[state.printMode] || 'Single-Sided';
+    App.$('reviewColor').textContent = state.colorMode === 'color' ? 'Full Color' : 'Black & White';
+    App.$('reviewOrientation').textContent = state.orientation === 'portrait' ? 'Portrait' : 'Landscape';
+    App.$('reviewCopies').textContent = `${state.copies} ${state.copies > 1 ? 'copies' : 'copy'}`;
   }
 
-  // ── Submit ────────────────────────────────────────────
+  // ── Submit Print Job ──────────────────────────────────
   App.$('submitBtn').addEventListener('click', submitJob);
 
   async function submitJob() {
     const submitBtn = App.$('submitBtn');
     submitBtn.disabled = true;
 
-    App.showLoading('Submitting your print job…');
+    App.showLoading('Submitting your print job to shop…');
 
     try {
-      // Get the canvas image as a blob (more efficient than base64)
-      const canvasDataUrl = window.EditorModule?.exportCanvas();
-      if (!canvasDataUrl) throw new Error('No image to submit');
+      const payload = window.EditorModule?.getExportPayload();
+      if (!payload || !payload.front) throw new Error('No document sheet rendered to submit');
 
-      // Convert data URL to Blob for multipart upload
-      const blob = dataURLToBlob(canvasDataUrl);
+      const frontBlob = dataURLToBlob(payload.front);
 
-      // Build multipart form
       const formData = new FormData();
-      formData.append('image', blob, 'print-job.png');
+      formData.append('image', frontBlob, 'sheet-front.png');
+
+      if (payload.back && (state.printMode === 'manual_flip' || state.printMode === 'duplex')) {
+        const backBlob = dataURLToBlob(payload.back);
+        formData.append('back_image', backBlob, 'sheet-back.png');
+      }
+
       formData.append('shop_token', state.shopToken || '');
-      formData.append('widthMM', state.widthMM);
-      formData.append('heightMM', state.heightMM);
-      formData.append('copies', state.copies);
-      formData.append('colorMode', state.colorMode);
-      formData.append('paperSize', state.paperSize);
-      formData.append('orientation', state.orientation);
+      formData.append('widthMM', state.widthMM || 210);
+      formData.append('heightMM', state.heightMM || 297);
+      formData.append('copies', state.copies || 1);
+      formData.append('colorMode', state.colorMode || 'color');
+      formData.append('paperSize', state.paperSize || 'A4');
+      formData.append('orientation', state.orientation || 'portrait');
+      formData.append('printMode', state.printMode || 'single');
 
       const res = await fetch(`${state.apiBase}/api/jobs`, {
         method: 'POST',
@@ -68,13 +73,13 @@
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to submit job');
+        throw new Error(data.error || 'Failed to submit print job');
       }
 
       state.jobId = data.job_id;
       App.hideLoading();
-      App.showToast('Print job submitted!', 'success');
-      App.goNext(); // Go to status screen
+      App.showToast('Print job transmitted to shop!', 'success');
+      App.goNext(); // Step 6: Status
 
     } catch (err) {
       App.hideLoading();
@@ -84,7 +89,6 @@
     }
   }
 
-  // ── Utility: data URL → Blob ──────────────────────────
   function dataURLToBlob(dataUrl) {
     const [header, base64] = dataUrl.split(',');
     const mime = header.match(/:(.*?);/)[1];

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="Al-Latif Digital & Telecom Center — Instant Document Scan, Edit, Resize & High-Precision Print Studio.">
+  <meta name="description" content="Al-Latif Digital & Telecom Center — Batch ID Card, Document Scan & High-Precision Print Studio.">
   <title>Al-Latif QR Print Studio</title>
 
   <!-- Google Fonts: Inter & Playfair Display -->
@@ -20,7 +20,7 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   </script>
 
-  <link rel="stylesheet" href="css/studio.css?v=2.5">
+  <link rel="stylesheet" href="css/studio.css?v=3.0">
 </head>
 <body>
   <!-- ════════════════════════════════════════════════════════
@@ -42,9 +42,9 @@
       <div id="progressFill" class="progress-fill" style="width: 16.66%"></div>
     </div>
     <div class="progress-labels">
-      <span class="step-label active" data-step="1">Scan</span>
-      <span class="step-label" data-step="2">Size</span>
-      <span class="step-label" data-step="3">Layout</span>
+      <span class="step-label active" data-step="1">Upload</span>
+      <span class="step-label" data-step="2">Cards</span>
+      <span class="step-label" data-step="3">Sheet Layout</span>
       <span class="step-label" data-step="4">Settings</span>
       <span class="step-label" data-step="5">Review</span>
       <span class="step-label" data-step="6">Status</span>
@@ -52,12 +52,12 @@
   </div>
 
   <!-- ════════════════════════════════════════════════════════
-       STEP 1: SCAN / UPLOAD & CAM-SCANNER CORNER CROP
+       STEP 1: SCAN, UPLOAD & CAM-SCANNER CROP
        ════════════════════════════════════════════════════════ -->
   <section id="step1" class="step active">
     <div class="step-content">
       <div class="scan-area">
-        <!-- Camera view (shown when camera active) -->
+        <!-- Camera view -->
         <div id="cameraContainer" class="camera-container" style="display: none;">
           <video id="cameraVideo" autoplay playsinline></video>
           <canvas id="scanOverlay" class="scan-overlay"></canvas>
@@ -68,7 +68,7 @@
           </div>
         </div>
 
-        <!-- Upload area (default view) -->
+        <!-- Upload area -->
         <div id="uploadArea" class="upload-area">
           <div class="upload-icon">
             <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -78,7 +78,7 @@
             </svg>
           </div>
           <h2>Upload or Scan Document</h2>
-          <p>Take a clear photo of your document or upload an image / PDF</p>
+          <p>Take a photo or upload ID card, CNIC, certificate, or document</p>
           <input type="file" id="fileInput" accept="image/*,application/pdf" style="display:none">
           <div class="upload-buttons">
             <button id="cameraStartBtn" class="btn btn-primary btn-lg">
@@ -89,14 +89,17 @@
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               Upload Image / PDF
             </button>
+            <button id="batchDirectBtn" class="btn btn-ghost" style="margin-top: 6px;">
+              🪪 Go to Batch ID Cards Manager →
+            </button>
           </div>
         </div>
 
-        <!-- CamScanner-like Corner & Crop Tool -->
+        <!-- CamScanner Corner Cropper -->
         <div id="cropScreen" class="crop-screen" style="display: none;">
           <div class="crop-header">
-            <h3>📐 Adjust Document Edges</h3>
-            <p>Drag the 4 corner handles to tightly crop out background</p>
+            <h3>📐 Crop Document Edges</h3>
+            <p>Drag corner handles to isolate document from background</p>
           </div>
 
           <div class="cropper-box" id="cropperBox">
@@ -108,27 +111,18 @@
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
               Rotate
             </button>
-            <button id="cropResetBtn" class="crop-tool-btn" title="Select Full Image">
+            <button id="cropResetBtn" class="crop-tool-btn" title="Full Image">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
-              Full Image
+              Full
             </button>
-            <button id="cropIdCardBtn" class="crop-tool-btn" title="ID Card Ratio (86x54)">
+            <button id="cropIdCardBtn" class="crop-tool-btn" title="ID Card 86x54">
               🪪 ID Ratio
             </button>
           </div>
 
           <div class="scan-result-actions" style="margin-top: 14px;">
             <button id="cropRetakeBtn" class="btn btn-secondary">Retake</button>
-            <button id="cropApplyBtn" class="btn btn-primary">✅ Crop & Continue</button>
-          </div>
-        </div>
-
-        <!-- Scan result preview fallback -->
-        <div id="scanResult" class="scan-result" style="display: none;">
-          <img id="scanPreview" class="scan-preview-img" alt="Scanned document">
-          <div class="scan-result-actions">
-            <button id="retakeBtn" class="btn btn-secondary">Retake</button>
-            <button id="useScanBtn" class="btn btn-primary">Continue</button>
+            <button id="cropApplyBtn" class="btn btn-primary">✅ Crop & Add Card</button>
           </div>
         </div>
       </div>
@@ -136,161 +130,161 @@
   </section>
 
   <!-- ════════════════════════════════════════════════════════
-       STEP 2: SIZE SELECTION
+       STEP 2: BATCH ID CARDS & DOCUMENTS LIST
        ════════════════════════════════════════════════════════ -->
   <section id="step2" class="step">
     <div class="step-content">
-      <h2 class="step-title">Choose Print Size</h2>
-      <p class="step-subtitle">Select standard physical dimensions or enter custom mm</p>
+      <h2 class="step-title">ID Cards & Documents</h2>
+      <p class="step-subtitle">Manage multiple ID cards, front & back sides, and copy counts</p>
 
-      <div id="sizeGrid" class="size-grid">
-        <button class="size-card" data-width="86" data-height="54">
-          <div class="size-card-icon">🪪</div>
-          <div class="size-card-name">ID Card / CNIC</div>
-          <div class="size-card-dim">86 × 54 mm (Standard)</div>
-        </button>
-        <button class="size-card" data-width="210" data-height="297">
-          <div class="size-card-icon">📄</div>
-          <div class="size-card-name">A4 Full Page</div>
-          <div class="size-card-dim">210 × 297 mm</div>
-        </button>
-        <button class="size-card" data-width="105" data-height="148">
-          <div class="size-card-icon">📋</div>
-          <div class="size-card-name">A6 Document</div>
-          <div class="size-card-dim">105 × 148 mm</div>
-        </button>
-        <button class="size-card" data-width="102" data-height="152">
-          <div class="size-card-icon">📇</div>
-          <div class="size-card-name">Registration Card</div>
-          <div class="size-card-dim">102 × 152 mm (4×6")</div>
-        </button>
-        <button class="size-card" data-width="216" data-height="279">
-          <div class="size-card-icon">📃</div>
-          <div class="size-card-name">Letter Page</div>
-          <div class="size-card-dim">216 × 279 mm</div>
-        </button>
-        <button class="size-card custom-card" data-width="0" data-height="0">
-          <div class="size-card-icon">✏️</div>
-          <div class="size-card-name">Custom Dimensions</div>
-          <div class="size-card-dim">Specify exact mm</div>
-        </button>
-      </div>
+      <!-- Batch Cards List Container -->
+      <div id="batchCardsList" class="batch-cards-list"></div>
 
-      <!-- Custom size inputs (hidden until Custom is selected) -->
-      <div id="customSizeInputs" class="custom-size-inputs" style="display: none;">
-        <div class="input-row">
-          <div class="input-group">
-            <label for="customWidth">Width (mm)</label>
-            <input type="number" id="customWidth" placeholder="e.g. 86" min="10" max="500" step="0.1">
-          </div>
-          <div class="input-group">
-            <label for="customHeight">Height (mm)</label>
-            <input type="number" id="customHeight" placeholder="e.g. 54" min="10" max="500" step="0.1">
-          </div>
+      <button id="addNewCardBtn" class="btn btn-secondary" style="width: 100%; margin-top: 10px; border-style: dashed;">
+        ➕ Add Another ID Card / Item
+      </button>
+
+      <!-- Card Preset & Layout Mode Switcher -->
+      <div class="setting-card" style="margin-top: 16px;">
+        <div class="setting-label">Sheet Layout Style</div>
+        <div class="setting-options" id="layoutModeOptions">
+          <button class="option-btn active" data-value="cnic_same_page">
+            🪪 Front + Back (Same Page)
+          </button>
+          <button class="option-btn" data-value="grid_batch">
+            📄 Batch Multi-Card Grid (A4)
+          </button>
+          <button class="option-btn" data-value="free_canvas">
+            ✏️ Free Custom Placement
+          </button>
         </div>
-        <button id="applyCustomSize" class="btn btn-primary" style="margin-top: 12px; width: 100%;">Apply Custom Size</button>
       </div>
+
+      <div class="setting-card" style="margin-top: 12px;">
+        <div class="setting-label">Space Between Cards (mm)</div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <input type="range" id="gapRange" min="2" max="25" value="8" style="flex: 1; accent-color: #ff4d00;">
+          <span id="gapValue" style="font-weight: 700; color: #ff4d00; min-width: 44px;">8 mm</span>
+        </div>
+      </div>
+
+      <button id="goToLayoutBtn" class="btn btn-primary btn-lg" style="margin-top: 20px;">
+        Generate A4 Sheet Preview →
+      </button>
     </div>
   </section>
 
   <!-- ════════════════════════════════════════════════════════
-       STEP 3: HIGH-PRECISION FABRIC.JS SHEET CANVAS EDITOR
+       STEP 3: A4 PAPER WORKSPACE & SHEET EDITOR
        ════════════════════════════════════════════════════════ -->
   <section id="step3" class="step">
     <div class="step-content editor-step">
       <div class="editor-header-bar">
         <div>
-          <h2 class="step-title" style="font-size: 1.25rem; margin-bottom: 2px;">Document Layout</h2>
-          <p class="step-subtitle" style="margin-bottom: 8px;">Drag, resize, duplicate or add extra images on paper</p>
+          <h2 class="step-title" style="font-size: 1.25rem; margin-bottom: 2px;">A4 Sheet Preview</h2>
+          <p class="step-subtitle" style="margin-bottom: 8px;">Exact physical paper layout as it will come out of printer</p>
         </div>
-        <div class="dimension-badge" id="dimBadge">Size: — × — mm</div>
+        <div class="dimension-badge" id="dimBadge">A4 (210 × 297 mm)</div>
       </div>
 
-      <!-- Front/Back tabs -->
-      <div class="editor-tabs">
-        <button id="frontTab" class="tab-btn active">Page 1 (Front)</button>
-        <button id="backTab" class="tab-btn">Page 2 (Back)</button>
+      <!-- Page 1 / Page 2 Tabs -->
+      <div class="editor-tabs" id="pageTabsWrap">
+        <button id="frontTab" class="tab-btn active">Page 1 (Front Sheet)</button>
+        <button id="backTab" class="tab-btn">Page 2 (Back Sheet)</button>
       </div>
 
-      <!-- Rulers & Sheet Canvas Workspace -->
+      <!-- Physical Paper Canvas Workspace with Measurement Rulers -->
       <div class="sheet-workspace">
-        <div class="ruler-top" id="rulerTop">
-          <div class="ruler-marker" style="left: 0%">0mm</div>
-          <div class="ruler-marker" style="left: 25%">50mm</div>
-          <div class="ruler-marker" style="left: 50%">100mm</div>
-          <div class="ruler-marker" style="left: 75%">150mm</div>
-          <div class="ruler-marker" style="left: 100%">Max</div>
-        </div>
+        <div class="ruler-top" id="rulerTop"></div>
         
         <div class="canvas-ruler-wrapper">
-          <div class="ruler-left" id="rulerLeft">
-            <div class="ruler-marker-v" style="top: 0%">0</div>
-            <div class="ruler-marker-v" style="top: 33%">50</div>
-            <div class="ruler-marker-v" style="top: 66%">100</div>
-          </div>
+          <div class="ruler-left" id="rulerLeft"></div>
           
-          <div id="canvasContainer" class="canvas-container">
+          <div id="canvasContainer" class="canvas-container a4-paper-shadow">
             <canvas id="editorCanvas"></canvas>
           </div>
         </div>
       </div>
 
-      <!-- Editor Comprehensive Toolbar -->
+      <!-- Comprehensive Precision Toolbar -->
       <div class="editor-toolbar">
-        <button id="duplicateBtn" class="tool-btn" title="Duplicate / Copy Active Image">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <button id="duplicateBtn" class="tool-btn" title="Duplicate Active Card">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           <span>Duplicate</span>
         </button>
         <button id="rotateRightBtn" class="tool-btn" title="Rotate 90° Clockwise">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
           <span>Rotate</span>
         </button>
         <button id="flipHBtn" class="tool-btn" title="Flip Horizontal">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M16 6l4 6-4 6M8 6l-4 6 4 6"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M16 6l4 6-4 6M8 6l-4 6 4 6"/></svg>
           <span>Flip H</span>
         </button>
         <button id="flipVBtn" class="tool-btn" title="Flip Vertical">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20M6 8L12 4l6 4M6 16l6 4 6-4"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20M6 8L12 4l6 4M6 16l6 4 6-4"/></svg>
           <span>Flip V</span>
         </button>
         <button id="centerBtn" class="tool-btn" title="Center on Page">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
           <span>Center</span>
         </button>
-        <button id="fitBtn" class="tool-btn" title="Fit to Width">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-          <span>Fit</span>
+        <button id="fitBtn" class="tool-btn" title="Reset Card Size">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+          <span>ID Snap</span>
         </button>
-        <button id="addImageBtn" class="tool-btn" title="Add Another Image (Back / Photo)">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <button id="addImageBtn" class="tool-btn" title="Add Image onto Sheet">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
           <span>+ Image</span>
         </button>
         <button id="deleteObjBtn" class="tool-btn tool-danger" title="Delete Selected">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
           <span>Delete</span>
         </button>
       </div>
 
       <input type="file" id="addImageInput" accept="image/*" style="display:none">
+
+      <button id="goToSettingsBtn" class="btn btn-primary btn-lg" style="margin-top: 20px;">
+        Continue to Print Settings →
+      </button>
     </div>
   </section>
 
   <!-- ════════════════════════════════════════════════════════
-       STEP 4: PRINT SETTINGS
+       STEP 4: PRINT SETTINGS & DUPLEX MODE
        ════════════════════════════════════════════════════════ -->
   <section id="step4" class="step">
     <div class="step-content">
       <h2 class="step-title">Print Settings</h2>
-      <p class="step-subtitle">Configure printer output format and copies</p>
+      <p class="step-subtitle">Configure duplex / 2-sided mode and paper output</p>
 
       <div class="settings-list">
+        <!-- Duplex / Double-Sided Mode -->
+        <div class="setting-card">
+          <div class="setting-label">2-Sided / Duplex Printing</div>
+          <div class="setting-options" id="duplexOptions">
+            <button class="option-btn active" data-value="single">
+              📄 Single-Sided (1 Page)
+            </button>
+            <button class="option-btn" data-value="manual_flip">
+              🔄 Manual Flip (Non-Duplex Printer)
+            </button>
+            <button class="option-btn" data-value="duplex">
+              📑 Auto-Duplex (2-Sided Printer)
+            </button>
+          </div>
+          <p id="duplexHelpText" class="setting-help-text" style="margin-top: 8px; font-size: 0.775rem; color: #a1a1aa;">
+            Prints page 1 directly. Both front & back can be on the same page.
+          </p>
+        </div>
+
         <!-- Paper Size -->
         <div class="setting-card">
-          <div class="setting-label">Physical Paper Size</div>
+          <div class="setting-label">Paper Sheet Format</div>
           <div class="setting-options" id="paperSizeOptions">
-            <button class="option-btn active" data-value="A4">A4 Page</button>
-            <button class="option-btn" data-value="A5">A5 Half</button>
-            <button class="option-btn" data-value="Letter">Letter</button>
+            <button class="option-btn active" data-value="A4">A4 (Standard 210×297mm)</button>
+            <button class="option-btn" data-value="Letter">Letter (8.5×11")</button>
+            <button class="option-btn" data-value="A5">A5 (Half A4)</button>
           </div>
         </div>
 
@@ -311,7 +305,7 @@
 
         <!-- Orientation -->
         <div class="setting-card">
-          <div class="setting-label">Page Orientation</div>
+          <div class="setting-label">Sheet Orientation</div>
           <div class="setting-options" id="orientationOptions">
             <button class="option-btn active" data-value="portrait">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/></svg>
@@ -326,7 +320,7 @@
 
         <!-- Copies -->
         <div class="setting-card">
-          <div class="setting-label">Number of Copies</div>
+          <div class="setting-label">Physical Sheet Copies</div>
           <div class="copies-stepper">
             <button id="copiesMinus" class="stepper-btn">−</button>
             <span id="copiesValue" class="stepper-value">1</span>
@@ -334,6 +328,10 @@
           </div>
         </div>
       </div>
+
+      <button id="goToReviewBtn" class="btn btn-primary btn-lg" style="margin-top: 24px;">
+        Review Print Order →
+      </button>
     </div>
   </section>
 
@@ -343,7 +341,7 @@
   <section id="step5" class="step">
     <div class="step-content">
       <h2 class="step-title">Review Print Order</h2>
-      <p class="step-subtitle">Verify your document preview and submit directly to printer</p>
+      <p class="step-subtitle">Verify your exact A4 paper preview and submit directly to printer</p>
 
       <div class="review-preview-card">
         <img id="reviewPreviewImg" class="review-preview-img" alt="Print preview">
@@ -351,28 +349,24 @@
 
       <div class="review-summary">
         <div class="summary-row">
-          <span class="summary-label">Target Size</span>
-          <span id="reviewSize" class="summary-value">—</span>
+          <span class="summary-label">Paper Format</span>
+          <span id="reviewPaper" class="summary-value">A4 Page</span>
         </div>
         <div class="summary-row">
-          <span class="summary-label">Paper Format</span>
-          <span id="reviewPaper" class="summary-value">—</span>
+          <span class="summary-label">Duplex / 2-Sided</span>
+          <span id="reviewDuplex" class="summary-value">Single-Sided</span>
         </div>
         <div class="summary-row">
           <span class="summary-label">Color Mode</span>
-          <span id="reviewColor" class="summary-value">—</span>
+          <span id="reviewColor" class="summary-value">Color</span>
         </div>
         <div class="summary-row">
-          <span class="summary-label">Orientation</span>
-          <span id="reviewOrientation" class="summary-value">—</span>
+          <span class="summary-label">Sheet Orientation</span>
+          <span id="reviewOrientation" class="summary-value">Portrait</span>
         </div>
         <div class="summary-row">
-          <span class="summary-label">Total Copies</span>
-          <span id="reviewCopies" class="summary-value">—</span>
-        </div>
-        <div class="summary-row">
-          <span class="summary-label">Estimated Sheets</span>
-          <span id="reviewSheets" class="summary-value">—</span>
+          <span class="summary-label">Sheet Copies</span>
+          <span id="reviewCopies" class="summary-value">1</span>
         </div>
       </div>
 
@@ -393,7 +387,7 @@
           <div class="spinner"></div>
         </div>
         <h2 id="statusTitle" class="status-title">Sent to Print Shop</h2>
-        <p id="statusMessage" class="status-message">Your print job has been transmitted. The shop counter operator will review and print it shortly.</p>
+        <p id="statusMessage" class="status-message">Your print job has been sent. The shop counter operator will review and print it shortly.</p>
       </div>
 
       <button id="newJobBtn" class="btn btn-secondary" style="display: none; margin-top: 24px; width: 100%;">
@@ -402,27 +396,21 @@
     </div>
   </section>
 
-  <!-- ════════════════════════════════════════════════════════
-       LOADING OVERLAY
-       ════════════════════════════════════════════════════════ -->
+  <!-- Loading Overlay -->
   <div id="loadingOverlay" class="loading-overlay" style="display: none;">
     <div class="loading-spinner"></div>
     <p id="loadingText">Processing document…</p>
   </div>
 
-  <!-- ════════════════════════════════════════════════════════
-       TOAST NOTIFICATIONS
-       ════════════════════════════════════════════════════════ -->
+  <!-- Toast Notifications -->
   <div id="toastContainer" class="toast-container"></div>
 
-  <!-- ════════════════════════════════════════════════════════
-       SCRIPTS (Cache-busted)
-       ════════════════════════════════════════════════════════ -->
-  <script src="js/app.js?v=2.5"></script>
-  <script src="js/scanner.js?v=2.5"></script>
-  <script src="js/editor.js?v=2.5"></script>
-  <script src="js/settings.js?v=2.5"></script>
-  <script src="js/preview.js?v=2.5"></script>
-  <script src="js/status.js?v=2.5"></script>
+  <!-- Scripts -->
+  <script src="js/app.js?v=3.0"></script>
+  <script src="js/scanner.js?v=3.0"></script>
+  <script src="js/editor.js?v=3.0"></script>
+  <script src="js/settings.js?v=3.0"></script>
+  <script src="js/preview.js?v=3.0"></script>
+  <script src="js/status.js?v=3.0"></script>
 </body>
 </html>

@@ -38,14 +38,16 @@ router.get('/poll', async (req, res) => {
 
     res.json({
       id: job.id,
-      imageUrl: `${baseUrl}/uploads/${job.file_path}`,
-      thumbnailUrl: job.thumbnail_path ? `${baseUrl}/uploads/${job.thumbnail_path}` : null,
-      widthMM: parseFloat(job.width_mm),
-      heightMM: parseFloat(job.height_mm),
+      imageUrl: `${baseUrl}/uploads/${path.basename(job.file_path)}`,
+      backImageUrl: job.back_file_path ? `${baseUrl}/uploads/${path.basename(job.back_file_path)}` : null,
+      thumbnailUrl: job.thumbnail_path ? `${baseUrl}/uploads/${path.basename(job.thumbnail_path)}` : null,
+      widthMM: Number(job.width_mm),
+      heightMM: Number(job.height_mm),
       copies: job.copies,
       colorMode: job.color_mode,
       paperSize: job.paper_size,
       orientation: job.orientation,
+      printMode: job.print_mode || 'single',
       createdAt: job.created_at,
     });
   } catch (err) {

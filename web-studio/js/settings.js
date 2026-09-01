@@ -1,29 +1,57 @@
 /**
- * settings.js — Step 4: Print settings (paper size, color mode, orientation, copies).
+ * settings.js — Step 4: Print Settings & Duplex Configuration.
  *
- * Reads user selections and stores them in App.state.
- * Uses simple option-button toggle pattern.
+ * Configures:
+ * - 2-Sided / Duplex Mode (Single, Manual Flip Non-Duplex, Auto Duplex)
+ * - Paper Format (A4, Letter, A5)
+ * - Color Mode (Color, Black & White)
+ * - Sheet Orientation (Portrait, Landscape)
+ * - Sheet Copies
  */
 
 (() => {
   const { state } = App;
 
-  // ── Option button groups ──────────────────────────────
+  state.printMode = 'single'; // 'single', 'manual_flip', 'duplex'
+  state.paperSize = 'A4';
+  state.colorMode = 'color';
+  state.orientation = 'portrait';
+  state.copies = 1;
+
+  // ── Duplex Options ────────────────────────────────────
+  const duplexOptions = App.$('duplexOptions');
+  const duplexHelp = App.$('duplexHelpText');
+
+  const helpMessages = {
+    single: 'Prints Page 1 directly. Both Front & Back can be arranged on the same page.',
+    manual_flip: 'Recommended for standard (non-duplex) printers: Page 1 prints out, then the operator flips the paper in the tray to print Page 2.',
+    duplex: 'For double-sided printers: both sides are printed automatically in a single pass.',
+  };
+
+  if (duplexOptions) {
+    duplexOptions.querySelectorAll('.option-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        duplexOptions.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.printMode = btn.dataset.value;
+        if (duplexHelp) duplexHelp.textContent = helpMessages[state.printMode] || '';
+      });
+    });
+  }
+
+  // ── Other Option Groups ───────────────────────────────
   function setupOptionGroup(containerId, stateKey, defaultValue) {
     const container = App.$(containerId);
     if (!container) return;
 
-    const buttons = container.querySelectorAll('.option-btn');
-
-    buttons.forEach(btn => {
+    container.querySelectorAll('.option-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        buttons.forEach(b => b.classList.remove('active'));
+        container.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         state[stateKey] = btn.dataset.value;
       });
     });
 
-    // Set default
     state[stateKey] = defaultValue;
   }
 
@@ -31,7 +59,7 @@
   setupOptionGroup('colorModeOptions', 'colorMode', 'color');
   setupOptionGroup('orientationOptions', 'orientation', 'portrait');
 
-  // ── Copies stepper ────────────────────────────────────
+  // ── Copies Stepper ────────────────────────────────────
   const copiesValue = App.$('copiesValue');
 
   App.$('copiesMinus').addEventListener('click', () => {
@@ -48,25 +76,11 @@
     }
   });
 
-  // ── Navigation: step 4 → step 5 via swipe or we add
-  //    a "Next" action at bottom. For now, we rely on
-  //    a next button being added, or the user tapping
-  //    the progress bar step. Let's add a continue button. ─
-  // We'll append a "Continue" button dynamically
-  const settingsContent = App.$('step4').querySelector('.step-content');
-  const nextBtn = document.createElement('button');
-  nextBtn.className = 'btn btn-primary btn-lg';
-  nextBtn.style.marginTop = '24px';
-  nextBtn.innerHTML = 'Continue to Review →';
-  nextBtn.addEventListener('click', () => App.goNext());
-  settingsContent.appendChild(nextBtn);
-
-  // Also add continue button on step 3 (editor)
-  const editorContent = App.$('step3').querySelector('.step-content');
-  const editorNextBtn = document.createElement('button');
-  editorNextBtn.className = 'btn btn-primary btn-lg';
-  editorNextBtn.style.marginTop = '12px';
-  editorNextBtn.innerHTML = 'Continue to Settings →';
-  editorNextBtn.addEventListener('click', () => App.goNext());
-  editorContent.appendChild(editorNextBtn);
+  // ── Navigation to Step 5 (Review) ─────────────────────
+  const goToReview = App.$('goToReviewBtn');
+  if (goToReview) {
+    goToReview.addEventListener('click', () => {
+      App.goNext();
+    });
+  }
 })();
