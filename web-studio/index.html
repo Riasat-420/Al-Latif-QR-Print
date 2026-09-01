@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="Al-Latif Digital & Telecom Center — Batch ID Card, Document Scan & High-Precision Print Studio.">
+  <meta name="description" content="Al-Latif Digital & Telecom Center — Full Page Document, PDF, Batch ID Card & High-Precision Print Studio.">
   <title>Al-Latif QR Print Studio</title>
 
   <!-- Google Fonts: Inter & Playfair Display -->
@@ -20,7 +20,7 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   </script>
 
-  <link rel="stylesheet" href="css/studio.css?v=3.0">
+  <link rel="stylesheet" href="css/studio.css?v=3.5">
 </head>
 <body>
   <!-- ════════════════════════════════════════════════════════
@@ -43,8 +43,8 @@
     </div>
     <div class="progress-labels">
       <span class="step-label active" data-step="1">Upload</span>
-      <span class="step-label" data-step="2">Cards</span>
-      <span class="step-label" data-step="3">Sheet Layout</span>
+      <span class="step-label" data-step="2">Type</span>
+      <span class="step-label" data-step="3">Sheet Preview</span>
       <span class="step-label" data-step="4">Settings</span>
       <span class="step-label" data-step="5">Review</span>
       <span class="step-label" data-step="6">Status</span>
@@ -77,20 +77,17 @@
               <line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
           </div>
-          <h2>Upload or Scan Document</h2>
-          <p>Take a photo or upload ID card, CNIC, certificate, or document</p>
+          <h2>Upload Document or Photo</h2>
+          <p>Full Page PDF, Application Form, Utility Bill, Certificate, or ID Card</p>
           <input type="file" id="fileInput" accept="image/*,application/pdf" style="display:none">
           <div class="upload-buttons">
-            <button id="cameraStartBtn" class="btn btn-primary btn-lg">
+            <button id="uploadBtn" class="btn btn-primary btn-lg">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload PDF / Document / Photo
+            </button>
+            <button id="cameraStartBtn" class="btn btn-secondary btn-lg">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
               Scan with Camera
-            </button>
-            <button id="uploadBtn" class="btn btn-secondary btn-lg">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Upload Image / PDF
-            </button>
-            <button id="batchDirectBtn" class="btn btn-ghost" style="margin-top: 6px;">
-              🪪 Go to Batch ID Cards Manager →
             </button>
           </div>
         </div>
@@ -98,8 +95,8 @@
         <!-- CamScanner Corner Cropper -->
         <div id="cropScreen" class="crop-screen" style="display: none;">
           <div class="crop-header">
-            <h3>📐 Crop Document Edges</h3>
-            <p>Drag corner handles to isolate document from background</p>
+            <h3>📐 Document Crop & Straighten</h3>
+            <p>Drag corner handles to isolate document, or click "Full Page" to keep all</p>
           </div>
 
           <div class="cropper-box" id="cropperBox">
@@ -113,16 +110,16 @@
             </button>
             <button id="cropResetBtn" class="crop-tool-btn" title="Full Image">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
-              Full
+              Full Page
             </button>
-            <button id="cropIdCardBtn" class="crop-tool-btn" title="ID Card 86x54">
+            <button id="cropIdCardBtn" class="crop-tool-btn" title="ID Card Ratio">
               🪪 ID Ratio
             </button>
           </div>
 
           <div class="scan-result-actions" style="margin-top: 14px;">
-            <button id="cropRetakeBtn" class="btn btn-secondary">Retake</button>
-            <button id="cropApplyBtn" class="btn btn-primary">✅ Crop & Add Card</button>
+            <button id="cropRetakeBtn" class="btn btn-secondary">Choose Other File</button>
+            <button id="cropApplyBtn" class="btn btn-primary">✅ Continue to Layout →</button>
           </div>
         </div>
       </div>
@@ -130,46 +127,63 @@
   </section>
 
   <!-- ════════════════════════════════════════════════════════
-       STEP 2: BATCH ID CARDS & DOCUMENTS LIST
+       STEP 2: PRINT TYPE & LAYOUT SELECTOR
        ════════════════════════════════════════════════════════ -->
   <section id="step2" class="step">
     <div class="step-content">
-      <h2 class="step-title">ID Cards & Documents</h2>
-      <p class="step-subtitle">Manage multiple ID cards, front & back sides, and copy counts</p>
+      <h2 class="step-title">Choose Document Type</h2>
+      <p class="step-subtitle">Select how this document should be arranged on the A4 paper</p>
 
-      <!-- Batch Cards List Container -->
-      <div id="batchCardsList" class="batch-cards-list"></div>
+      <!-- Layout Type Grid -->
+      <div class="print-type-grid" id="printTypeGrid">
+        <!-- 1. Full Page Document (Default) -->
+        <div class="print-type-card selected" data-type="full_page">
+          <div class="print-type-icon">📄</div>
+          <div class="print-type-info">
+            <div class="print-type-name">Full Page Document / PDF</div>
+            <div class="print-type-desc">Fills the entire A4 sheet with standard printer margins. Best for PDFs, certificates, forms, letters & photos.</div>
+          </div>
+        </div>
 
-      <button id="addNewCardBtn" class="btn btn-secondary" style="width: 100%; margin-top: 10px; border-style: dashed;">
-        ➕ Add Another ID Card / Item
-      </button>
+        <!-- 2. CNIC Front & Back on 1 Page -->
+        <div class="print-type-card" data-type="cnic_same_page">
+          <div class="print-type-icon">🪪</div>
+          <div class="print-type-info">
+            <div class="print-type-name">CNIC / ID Card (Front & Back on 1 Sheet)</div>
+            <div class="print-type-desc">Places Front on top and Back underneath on a single A4 page.</div>
+          </div>
+        </div>
 
-      <!-- Card Preset & Layout Mode Switcher -->
-      <div class="setting-card" style="margin-top: 16px;">
-        <div class="setting-label">Sheet Layout Style</div>
-        <div class="setting-options" id="layoutModeOptions">
-          <button class="option-btn active" data-value="cnic_same_page">
-            🪪 Front + Back (Same Page)
-          </button>
-          <button class="option-btn" data-value="grid_batch">
-            📄 Batch Multi-Card Grid (A4)
-          </button>
-          <button class="option-btn" data-value="free_canvas">
-            ✏️ Free Custom Placement
-          </button>
+        <!-- 3. Batch Multi-Card Grid -->
+        <div class="print-type-card" data-type="grid_batch">
+          <div class="print-type-icon">📑</div>
+          <div class="print-type-info">
+            <div class="print-type-name">Batch Multi-Card Grid (A4)</div>
+            <div class="print-type-desc">Arranges multiple ID cards (up to 8 per sheet) in a 2×4 grid.</div>
+          </div>
+        </div>
+
+        <!-- 4. Free Custom Placement -->
+        <div class="print-type-card" data-type="free_canvas">
+          <div class="print-type-icon">✏️</div>
+          <div class="print-type-info">
+            <div class="print-type-name">Free Custom Placement</div>
+            <div class="print-type-desc">Freely drag, resize, rotate, and place images anywhere on the sheet.</div>
+          </div>
         </div>
       </div>
 
-      <div class="setting-card" style="margin-top: 12px;">
-        <div class="setting-label">Space Between Cards (mm)</div>
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <input type="range" id="gapRange" min="2" max="25" value="8" style="flex: 1; accent-color: #ff4d00;">
-          <span id="gapValue" style="font-weight: 700; color: #ff4d00; min-width: 44px;">8 mm</span>
-        </div>
+      <!-- Extra Batch Card Manager (Visible only when in ID Card modes) -->
+      <div id="batchCardManagerWrap" style="display: none; margin-top: 18px;">
+        <h3 style="font-size: 1rem; margin-bottom: 8px; color: var(--color-primary-300);">ID Card Items & Back Sides</h3>
+        <div id="batchCardsList" class="batch-cards-list"></div>
+        <button id="addNewCardBtn" class="btn btn-secondary" style="width: 100%; margin-top: 10px; border-style: dashed;">
+          ➕ Add Another ID Card
+        </button>
       </div>
 
       <button id="goToLayoutBtn" class="btn btn-primary btn-lg" style="margin-top: 20px;">
-        Generate A4 Sheet Preview →
+        Open A4 Sheet Preview →
       </button>
     </div>
   </section>
@@ -208,29 +222,29 @@
 
       <!-- Comprehensive Precision Toolbar -->
       <div class="editor-toolbar">
-        <button id="duplicateBtn" class="tool-btn" title="Duplicate Active Card">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          <span>Duplicate</span>
-        </button>
-        <button id="rotateRightBtn" class="tool-btn" title="Rotate 90° Clockwise">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-          <span>Rotate</span>
-        </button>
-        <button id="flipHBtn" class="tool-btn" title="Flip Horizontal">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M16 6l4 6-4 6M8 6l-4 6 4 6"/></svg>
-          <span>Flip H</span>
-        </button>
-        <button id="flipVBtn" class="tool-btn" title="Flip Vertical">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20M6 8L12 4l6 4M6 16l6 4 6-4"/></svg>
-          <span>Flip V</span>
+        <button id="fitFullPageBtn" class="tool-btn" title="Fit Entire Page (A4)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          <span>Fit Page</span>
         </button>
         <button id="centerBtn" class="tool-btn" title="Center on Page">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
           <span>Center</span>
         </button>
-        <button id="fitBtn" class="tool-btn" title="Reset Card Size">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+        <button id="rotateRightBtn" class="tool-btn" title="Rotate 90° Clockwise">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          <span>Rotate</span>
+        </button>
+        <button id="duplicateBtn" class="tool-btn" title="Duplicate Active Item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span>Duplicate</span>
+        </button>
+        <button id="fitIdBtn" class="tool-btn" title="Snap to ID Card Size">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
           <span>ID Snap</span>
+        </button>
+        <button id="flipHBtn" class="tool-btn" title="Flip Horizontal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M16 6l4 6-4 6M8 6l-4 6 4 6"/></svg>
+          <span>Flip H</span>
         </button>
         <button id="addImageBtn" class="tool-btn" title="Add Image onto Sheet">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -406,11 +420,11 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="js/app.js?v=3.0"></script>
-  <script src="js/scanner.js?v=3.0"></script>
-  <script src="js/editor.js?v=3.0"></script>
-  <script src="js/settings.js?v=3.0"></script>
-  <script src="js/preview.js?v=3.0"></script>
-  <script src="js/status.js?v=3.0"></script>
+  <script src="js/app.js?v=3.5"></script>
+  <script src="js/scanner.js?v=3.5"></script>
+  <script src="js/editor.js?v=3.5"></script>
+  <script src="js/settings.js?v=3.5"></script>
+  <script src="js/preview.js?v=3.5"></script>
+  <script src="js/status.js?v=3.5"></script>
 </body>
 </html>
